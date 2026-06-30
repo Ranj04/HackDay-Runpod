@@ -45,9 +45,9 @@ export function ResultsView({
   return (
     <div className="space-y-6">
       <section className="grid items-start gap-6 lg:grid-cols-[0.72fr_1.28fr]">
-        <Card className="border-0 bg-[#101a2b] text-white ring-white/10">
+        <Card className="border-0 bg-card text-card-foreground ring-foreground/10">
           <CardHeader>
-            <CardDescription className="text-white/50">
+            <CardDescription className="text-muted-foreground">
               Form score
             </CardDescription>
           </CardHeader>
@@ -60,18 +60,18 @@ export function ResultsView({
                 } as CSSProperties
               }
             >
-              <div className="grid size-39 place-items-center rounded-full bg-[#101a2b] text-center">
+              <div className="grid size-39 place-items-center rounded-full bg-card text-center">
                 <div>
                   <strong className="block text-6xl font-semibold tracking-[-0.06em]">
                     {analysis.score}
                   </strong>
-                  <span className="text-xs uppercase tracking-[0.24em] text-white/40">
+                  <span className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
                     out of 100
                   </span>
                 </div>
               </div>
             </div>
-            <div className="mt-6 flex items-center gap-2 text-sm text-[#2e86ff]">
+            <div className="mt-6 flex items-center gap-2 text-sm text-primary">
               <Sparkles className="size-4" />
               Solid base. One clear focus.
             </div>
@@ -87,7 +87,7 @@ export function ResultsView({
             <div className="flex items-center justify-between gap-3">
               <Badge
                 variant="secondary"
-                className="border border-[#ff6a1a]/30 bg-[#ff6a1a]/15 text-[#ff9a5a]"
+                className="border border-accent-brand/30 bg-accent-brand/15 text-accent-brand-strong"
               >
                 <CircleAlert className="size-3" />
                 {severityLabel[topFlaw.severity]}
@@ -105,13 +105,13 @@ export function ResultsView({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mt-2 overflow-hidden rounded-2xl border bg-[#0e1420]">
+            <div className="mt-2 overflow-hidden rounded-2xl border bg-muted">
               {echoOverlay ?? (
                 <div className="relative grid min-h-52 place-items-center">
                   <div className="capture-grid absolute inset-0 opacity-25" />
                   <div className="relative flex items-center gap-5">
-                    <div className="h-28 w-px rotate-12 bg-[#101a2b]/35 shadow-[14px_20px_0_#101a2b59,-10px_52px_0_#101a2b59]" />
-                    <div className="h-28 w-px -rotate-6 bg-[#2e86ff] shadow-[10px_18px_0_#2e86ff,-8px_52px_0_#2e86ff]" />
+                    <div className="h-28 w-px rotate-12 bg-foreground/20 shadow-[14px_20px_0_color-mix(in_oklab,var(--foreground),transparent_80%),-10px_52px_0_color-mix(in_oklab,var(--foreground),transparent_80%)]" />
+                    <div className="h-28 w-px -rotate-6 bg-[var(--blue)] shadow-[10px_18px_0_var(--blue),-8px_52px_0_var(--blue)]" />
                   </div>
                   <span className="absolute bottom-4 left-4 text-xs font-medium text-muted-foreground">
                     Echo overlay slot
@@ -126,7 +126,7 @@ export function ResultsView({
       <Card className="border-0 ring-white/10">
         <CardHeader>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            <RotateCcw className="size-4 text-[#5aa0ff]" />
+            <RotateCcw className="size-4 text-primary" />
             Corrective drill
           </div>
           <CardTitle className="mt-2 text-2xl font-semibold">
@@ -137,10 +137,10 @@ export function ResultsView({
           <ol className="grid gap-3 lg:grid-cols-3">
             {coaching.drill.steps.map((step, index) => (
               <li
-                className="flex gap-3 rounded-xl bg-[#0e1420] p-4 text-sm leading-6"
+                className="flex gap-3 rounded-xl bg-muted p-4 text-sm leading-6"
                 key={step}
               >
-                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[#101a2b] text-xs text-white">
+                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-secondary text-xs text-secondary-foreground">
                   {index + 1}
                 </span>
                 {step}
@@ -148,7 +148,7 @@ export function ResultsView({
             ))}
           </ol>
           <a
-            className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium underline decoration-white/30 underline-offset-4 hover:decoration-white"
+            className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground"
             href={coaching.drill.sourceUrl}
             target="_blank"
             rel="noreferrer"
@@ -168,7 +168,7 @@ export function ResultsView({
         </Link>
         {saveAction ?? (
           <Link
-            className={cn(buttonVariants(), "h-11 bg-[#2e86ff] px-5 font-medium text-[#04080f] hover:bg-[#1e6fe0]")}
+            className={cn(buttonVariants(), "h-11 px-5 font-medium")}
             href="/history"
           >
             <Check className="size-4" />
@@ -190,12 +190,12 @@ function Metric({
   accent?: boolean;
 }) {
   return (
-    <div className="rounded-xl border bg-[#101a2b] p-4">
+    <div className="rounded-xl border bg-muted p-4">
       <span className="block text-xs text-muted-foreground">{label}</span>
       <strong
         className={cn(
           "mt-1 block text-2xl font-semibold tabular-nums",
-          accent && "text-[#5aa0ff]",
+          accent && "text-primary",
         )}
       >
         {value}

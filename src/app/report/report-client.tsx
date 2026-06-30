@@ -77,7 +77,7 @@ export function ReportClient() {
 
   if (state.phase === "error") {
     return (
-      <div className="rounded-2xl border border-white/10 bg-[#0c1422] p-8 text-center">
+      <div className="rounded-2xl border border-border bg-card p-8 text-center">
         <p className="text-sm text-muted-foreground">{state.message}</p>
         <Link href="/capture" className={cn(buttonVariants(), "mt-4")}>
           Record a shot
@@ -98,7 +98,7 @@ export function ReportClient() {
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="h-10 bg-[#2e86ff] px-5 font-medium text-[#04080f] hover:bg-[#1e6fe0]"
+            className="h-10 px-5 font-medium"
           >
             {saving ? <LoaderCircle className="animate-spin" /> : <Check className="size-4" />}
             Save run
@@ -113,7 +113,7 @@ export function ReportClient() {
         {mode === "insforge" ? "Persists to InsForge (RLS-scoped per user)" : "Local demo storage"}
       </span>
       {saveError ? (
-        <p aria-live="polite" className="text-xs text-red-500">
+        <p aria-live="polite" className="text-xs text-destructive">
           {saveError}
         </p>
       ) : null}

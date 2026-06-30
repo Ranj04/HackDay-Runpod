@@ -10,9 +10,9 @@ export const INK = "#080C14"; // blue-black background / on-blue text
 export const SURFACE = "#16202F"; // hairline borders, scrubber track
 export const BONE = "#F4F1E8"; // you / primary text on ink (warm white)
 export const ECHO = "#2E86FF"; // the ideal reference (electric azure blue)
-export const SIGNAL = "#FF6A1A"; // the one deviation / error (vivid orange)
+export const SIGNAL = "#F97316"; // the athlete's deviation accent (brand orange-500)
 export const MUTED = "#7C879B"; // secondary labels on ink
 
 // RGB triplets for canvas rgba() glows.
 export const ECHO_RGB = "46, 134, 255";
-export const SIGNAL_RGB = "255, 106, 26";
+export const SIGNAL_RGB = "249, 115, 22";

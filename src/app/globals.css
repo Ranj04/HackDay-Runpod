@@ -94,7 +94,7 @@
   --bone: #f4f1e8;
   --blue: #2e86ff;
   --blue-soft: #5aa0ff;
-  --orange: #ff6a1a;
+  --orange: var(--orange-500);
   --muted-ink: #8a94a8;
 
   /* 2. Primitive palette scales */
@@ -250,7 +250,7 @@
 .hero-glow {
   background:
     radial-gradient(circle at 72% 38%, rgb(46 134 255 / 24%), transparent 27rem),
-    radial-gradient(circle at 18% 80%, rgb(255 106 26 / 10%), transparent 22rem),
+    radial-gradient(circle at 18% 80%, rgb(249 115 22 / 10%), transparent 22rem),
     linear-gradient(160deg, #080c14 30%, #0b1422);
 }
 

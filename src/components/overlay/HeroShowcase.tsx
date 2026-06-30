@@ -9,13 +9,13 @@ import { ShotCaptureSchema, type AnalysisResult } from "@/lib/contracts";
 
 function HeroScanPulse() {
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[#080c14]">
+    <div className="absolute inset-0 overflow-hidden bg-[var(--ink)]">
       <div className="capture-grid absolute inset-0 opacity-25" />
       <div
         className="pointer-events-none absolute inset-x-0 h-px bg-[var(--blue)] opacity-70"
         style={{ animation: "hero-scan 2.4s ease-in-out infinite" }}
       />
-      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#080c14] to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[var(--ink)] to-transparent" />
     </div>
   );
 }
@@ -45,10 +45,10 @@ export function HeroShowcase() {
   return (
     <section className="relative mx-auto w-full max-w-lg">
       <div className="absolute -inset-8 -z-10 rounded-full bg-[var(--blue)]/20 blur-3xl" />
-      <div className="rotate-2 rounded-[2.2rem] border border-white/10 bg-[#101a2b] p-3 shadow-2xl shadow-black/20">
+      <div className="rotate-2 rounded-[2.2rem] border border-border bg-card p-3 shadow-2xl shadow-black/20">
         <div
           ref={boxRef}
-          className="relative aspect-[4/5] overflow-hidden rounded-[1.65rem] bg-[#080c14]"
+          className="relative aspect-[4/5] overflow-hidden rounded-[1.65rem] bg-[var(--ink)]"
         >
           {!result ? (
             <HeroScanPulse />
@@ -78,7 +78,7 @@ export function HeroShowcase() {
               {result && (
                 <span
                   className="rounded-full px-3 py-1 text-xs font-medium"
-                  style={{ background: "var(--orange)", color: "#04080f" }}
+                  style={{ background: "var(--accent-brand)", color: "var(--accent-brand-foreground)" }}
                 >
                   {result.topFlaw.label}
                 </span>

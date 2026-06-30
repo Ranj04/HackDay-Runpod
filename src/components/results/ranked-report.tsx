@@ -20,9 +20,9 @@ function flawLabel(id: string): string {
 }
 
 function scoreTone(score: number): string {
-  if (score >= 75) return "text-emerald-400";
-  if (score >= 50) return "text-amber-400";
-  return "text-[#FF6A1A]";
+  if (score >= 75) return "text-success";
+  if (score >= 50) return "text-warning";
+  return "text-accent-brand-strong";
 }
 
 export function RankedReport({ report }: { report: CoachedReport }) {
@@ -54,8 +54,8 @@ function RepCard({ rep, rank, total }: { rep: CoachedRep; rank: number; total: n
   return (
     <Card
       className={cn(
-        "border-white/10 bg-[#0c1422]",
-        isWorst && "border-[#FF6A1A]/40 shadow-[0_0_24px_rgba(255,106,26,0.12)]",
+        "border-border bg-card",
+        isWorst && "border-accent-brand/40 shadow-[0_0_24px_color-mix(in_oklab,var(--accent-brand),transparent_88%)]",
       )}
     >
       <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start">
@@ -66,12 +66,12 @@ function RepCard({ rep, rank, total }: { rep: CoachedRep; rank: number; total: n
             </span>
             <span className="font-mono text-sm text-foreground">{rep.rep_id}</span>
             {isWorst ? (
-              <Badge className="border-[#FF6A1A]/50 bg-[#FF6A1A]/15 text-[#FF6A1A]">
+              <Badge className="border-accent-brand/50 bg-accent-brand/15 text-accent-brand-strong">
                 Worst
               </Badge>
             ) : null}
             {isBest ? (
-              <Badge className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400">
+              <Badge className="border-success/40 bg-success/10 text-success">
                 <Trophy className="mr-1 size-3" /> Best
               </Badge>
             ) : null}
@@ -84,8 +84,8 @@ function RepCard({ rep, rank, total }: { rep: CoachedRep; rank: number; total: n
           </div>
           <Badge
             className={cn(
-              "border-white/10 bg-white/5 text-foreground",
-              !isClean && "border-[#FF6A1A]/30 text-[#FF8a4a]",
+              "border-border bg-muted text-foreground",
+              !isClean && "border-accent-brand/30 text-accent-brand-strong",
             )}
           >
             {flawLabel(rep.flaw_label)}
@@ -139,7 +139,7 @@ function Drill({ coaching }: { coaching: NonNullable<CoachedRep["coaching"]> }) 
               href={s.url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 rounded-full border border-[#2e86ff]/30 bg-[#2e86ff]/10 px-3 py-1 text-xs text-[#7db4ff] transition hover:bg-[#2e86ff]/20"
+              className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary transition hover:bg-primary/20"
             >
               {s.title.length > 48 ? s.title.slice(0, 48) + "…" : s.title}
               <ArrowUpRight className="size-3" />
@@ -160,11 +160,11 @@ function CostPanel({ cost }: { cost: RankCost }) {
     { icon: Database, label: "InsForge rows", value: fmt(cost.insforge_rows) },
   ];
   return (
-    <Card className="border-white/10 bg-[#0c1422]">
+    <Card className="border-border bg-card">
       <CardContent className="flex flex-wrap gap-x-8 gap-y-3 p-4">
         {stats.map((s) => (
           <div key={s.label} className="flex items-center gap-2">
-            <s.icon className="size-4 text-[#2e86ff]" />
+            <s.icon className="size-4 text-primary" />
             <span className="font-mono text-sm text-foreground">{s.value}</span>
             <span className="text-xs text-muted-foreground">{s.label}</span>
           </div>
