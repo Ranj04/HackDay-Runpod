@@ -21,14 +21,6 @@ x/y are normalized to 0..1 (image-plane), matching Ghost's keypoint convention.
 """
 from runpod_flash import CudaVersion, Endpoint, GpuType
 
-# COCO-17 keypoint order emitted by rtmlib's Body model.
-COCO17_NAMES = [
-    "nose", "left_eye", "right_eye", "left_ear", "right_ear",
-    "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
-    "left_wrist", "right_wrist", "left_hip", "right_hip",
-    "left_knee", "right_knee", "left_ankle", "right_ankle",
-]
-
 
 @Endpoint(
     name="ghost-pose",
@@ -37,7 +29,8 @@ COCO17_NAMES = [
     min_cuda_version=CudaVersion.V13_0,
     # onnxruntime-gpu's CUDA-13 wheel doesn't bundle CUDA libs and the worker base
     # image doesn't reliably provide libcudart.so.13 — ship the CUDA-13 runtime via
-    # pip nvidia wheels (onnxruntime>=1.19 auto-loads them from site-packages).
+    # pip nvidia wheels and ctypes-preload them in the body (they're not on the
+    # loader path, so onnxruntime can't find them on its own).
     # CUDA-13 nvidia wheels are unsuffixed (the -cu13 names are deprecated stubs).
     dependencies=[
         "rtmlib", "onnxruntime-gpu", "opencv-python-headless", "numpy",
@@ -53,9 +46,38 @@ async def pose(clip: dict) -> dict:
     import tempfile
     import urllib.request
 
+    import ctypes
+    import glob
+    import os
+
     import cv2
     import numpy as np
     from rtmlib import Body, draw_skeleton
+
+    # The CUDA libs come from pip nvidia wheels (site-packages/nvidia/*/lib) which
+    # aren't on the loader path, so onnxruntime's import fails to find libcudart.so.13.
+    # Preload them globally (cudart first) so onnxruntime resolves them. Runs before
+    # rtmlib's Body() triggers `import onnxruntime`.
+    import nvidia  # noqa: E402  (namespace pkg created by the nvidia-* wheels)
+
+    _sos = []
+    for _root in nvidia.__path__:
+        _sos += glob.glob(os.path.join(_root, "*", "lib", "*.so*"))
+    _sos.sort(key=lambda s: (0 if "cuda_runtime" in s else 1, s))
+    for _so in _sos:
+        try:
+            ctypes.CDLL(_so, mode=ctypes.RTLD_GLOBAL)
+        except OSError:
+            pass
+
+    # Defined inside the body: flash dev ships only the function body to the worker,
+    # so module-level constants are undefined remotely (skill gotcha #1).
+    COCO17_NAMES = [
+        "nose", "left_eye", "right_eye", "left_ear", "right_ear",
+        "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
+        "left_wrist", "right_wrist", "left_hip", "right_hip",
+        "left_knee", "right_knee", "left_ankle", "right_ankle",
+    ]
 
     rep_id = clip.get("rep_id", "r1")
     stride = int(clip.get("stride", 1))  # process every Nth frame (1 = all)
