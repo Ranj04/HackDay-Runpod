@@ -13,9 +13,9 @@ export function CaptureStage() {
   const [navigating, setNavigating] = useState(false);
 
   // A real recorded shot: stash it and let /results analyze + render it.
-  function handleCapture(capture: ShotCapture) {
+  function handleCapture(capture: ShotCapture, clip?: Blob) {
     setNavigating(true);
-    saveCapture(capture);
+    saveCapture(capture, clip);
     router.push("/results");
   }
 

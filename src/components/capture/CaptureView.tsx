@@ -14,7 +14,7 @@ import { isVisible, isVisibleForFraming } from "@/lib/vision/visibility";
 import type { PoseFrame, ShotCapture } from "@/lib/contracts";
 
 export interface CaptureViewProps {
-  onCapture?: (capture: ShotCapture) => void;
+  onCapture?: (capture: ShotCapture, clip?: Blob) => void;
   className?: string;
   /** Cap the stored frame rate (default 20fps); `0` keeps every buffered frame. */
   targetFps?: number;
@@ -91,11 +91,13 @@ function isCapturable(landmarks: NormalizedLandmark[]): boolean {
 }
 
 export function CaptureView({ onCapture, className, targetFps, precision }: CaptureViewProps) {
-  const { videoRef, error, start, stop } = useCamera();
+  const { videoRef, stream, error, start, stop } = useCamera();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const landmarkerRef = useRef<PoseLandmarker | null>(null);
   const rafRef = useRef<number | null>(null);
   const recordingRef = useRef(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const videoChunksRef = useRef<Blob[]>([]);
   const bufferRef = useRef<PoseFrame[]>([]);
   const recordStartRef = useRef(0);
   const lastVideoTimeRef = useRef(-1);
@@ -126,6 +128,9 @@ export function CaptureView({ onCapture, className, targetFps, precision }: Capt
     return () => {
       cancelled = true;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (recorderRef.current?.state === "recording") {
+        recorderRef.current.stop();
+      }
       stop();
     };
     // start/stop are stable from useCamera; run once on mount.
@@ -199,6 +204,17 @@ export function CaptureView({ onCapture, className, targetFps, precision }: Capt
       ...buildOptsRef.current,
     });
     setPhase("idle");
+    const recorder = recorderRef.current;
+    if (recorder?.state === "recording") {
+      recorder.onstop = () => {
+        const clip = new Blob(videoChunksRef.current, {
+          type: recorder.mimeType || "video/webm",
+        });
+        onCaptureRef.current?.(capture, clip.size > 0 ? clip : undefined);
+      };
+      recorder.stop();
+      return;
+    }
     onCaptureRef.current?.(capture);
   }, []);
 
@@ -234,9 +250,34 @@ export function CaptureView({ onCapture, className, targetFps, precision }: Capt
     bufferRef.current = [];
     recordStartRef.current = performance.now();
     recordingRef.current = true;
+    videoChunksRef.current = [];
+
+    if (stream && typeof MediaRecorder !== "undefined") {
+      const preferredTypes = [
+        "video/webm;codecs=vp9",
+        "video/webm;codecs=vp8",
+        "video/webm",
+        "video/mp4",
+      ];
+      const mimeType = preferredTypes.find((type) =>
+        MediaRecorder.isTypeSupported(type),
+      );
+      const recorder = new MediaRecorder(stream, {
+        ...(mimeType ? { mimeType } : {}),
+        videoBitsPerSecond: 1_200_000,
+      });
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) videoChunksRef.current.push(event.data);
+      };
+      recorderRef.current = recorder;
+      recorder.start(250);
+    }
+
     const id = setTimeout(finishRecording, RECORD_MS);
-    return () => clearTimeout(id);
-  }, [phase, finishRecording]);
+    return () => {
+      clearTimeout(id);
+    };
+  }, [phase, finishRecording, stream]);
 
   // Manual override: jump straight into recording, or stop early.
   const handleButton = useCallback(() => {

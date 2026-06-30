@@ -203,7 +203,7 @@ async def cited_drill(request: dict) -> dict:
                     "specific, actionable corrective drill"
                 ),
                 include_content=True,
-                num_results=5,
+                num_results=2,
                 timeout=180,
             )
             candidates = [as_dict(item) for item in (result.data or [])]

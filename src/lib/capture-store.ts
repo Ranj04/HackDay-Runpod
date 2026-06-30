@@ -5,9 +5,11 @@
 import { ShotCaptureSchema, type ShotCapture } from "@/lib/contracts";
 
 const KEY = "ghost.capture.v1";
+let capturedClip: Blob | null = null;
 
-export function saveCapture(capture: ShotCapture): void {
+export function saveCapture(capture: ShotCapture, clip?: Blob): void {
   if (typeof window === "undefined") return;
+  capturedClip = clip ?? null;
   try {
     window.sessionStorage.setItem(KEY, JSON.stringify(capture));
   } catch {
@@ -28,8 +30,14 @@ export function loadCapture(): ShotCapture | null {
   }
 }
 
+/** The recorded video survives Next.js client navigation, but not a full reload. */
+export function loadCapturedClip(): Blob | null {
+  return capturedClip;
+}
+
 export function clearCapture(): void {
   if (typeof window === "undefined") return;
+  capturedClip = null;
   try {
     window.sessionStorage.removeItem(KEY);
   } catch {
