@@ -1,4 +1,4 @@
-## Prompt A — Inference & Fan-out (Ghost at Scale · Runpod Flash)
+## Prompt A — Inference & Fan-out (Echo at Scale · Runpod Flash)
 
 **Run after Prompt 0 (cleanup) is done and pushed to `main`.** First: `git checkout main && git pull origin main`.
 
@@ -41,12 +41,12 @@ Your pipeline must emit exactly this:
 **verify:** `hello-gpu` returns a GPU name from a remote worker.
 
 ## Phase 1 — GPU pose endpoint
-Port Ghost's pose step to a `@Endpoint(gpu=...)` running **RTMPose via `rtmlib`** (deps: `rtmlib`, `onnxruntime-gpu`, `opencv-python`, `numpy`). Input one clip → output per-frame keypoints.
+Port Echo's pose step to a `@Endpoint(gpu=...)` running **RTMPose via `rtmlib`** (deps: `rtmlib`, `onnxruntime-gpu`, `opencv-python`, `numpy`). Input one clip → output per-frame keypoints.
 
 **verify:** one clip → keypoints with correct joint count + plausible coords; render one overlay frame locally and eyeball it.
 
 ## Phase 2 — Form scoring
-**Reuse Ghost's existing shot-form scoring** — port it and adapt only the keypoint-schema seam to the RTMPose output; write from scratch only if none exists. Output `{score, flaw_label}` (release elbow angle, arc height, knee bend, follow-through).
+**Reuse Echo's existing shot-form scoring** — port it and adapt only the keypoint-schema seam to the RTMPose output; write from scratch only if none exists. Output `{score, flaw_label}` (release elbow angle, arc height, knee bend, follow-through).
 
 **verify:** reference rep scores high; a deliberately bad clip scores low with a sensible `flaw_label`.
 

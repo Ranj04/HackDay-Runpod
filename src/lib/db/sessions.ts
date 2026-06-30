@@ -4,13 +4,13 @@ import type { AnalysisResult, CoachingResult } from "@/lib/contracts";
 
 import { getBrowserInsForge, isInsForgeConfigured } from "./client";
 import {
-  GhostSessionSchema,
-  type GhostSession,
+  EchoSessionSchema,
+  type EchoSession,
   type PersistenceMode,
   type RunArtifacts,
 } from "./types";
 
-const LOCAL_SESSION_KEY = "ghost.demo.sessions.v1";
+const LOCAL_SESSION_KEY = "echo.demo.sessions.v1";
 const DEMO_USER_ID = "local-demo-player";
 
 export function getPersistenceMode(): PersistenceMode {
@@ -23,7 +23,7 @@ export async function saveSession(
   analysis: AnalysisResult,
   coaching: CoachingResult,
   artifacts?: RunArtifacts,
-): Promise<GhostSession> {
+): Promise<EchoSession> {
   const client = getBrowserInsForge();
   const createdAt = new Date().toISOString();
 
@@ -58,7 +58,7 @@ export async function saveSession(
     artifacts,
   );
   const { data, error } = await client.database
-    .from("ghost_sessions")
+    .from("echo_sessions")
     .insert([session])
     .select()
     .single();
@@ -67,11 +67,11 @@ export async function saveSession(
     throw error;
   }
 
-  return GhostSessionSchema.parse(data);
+  return EchoSessionSchema.parse(data);
 }
 
 export async function loadSessions(): Promise<{
-  sessions: GhostSession[];
+  sessions: EchoSession[];
   mode: PersistenceMode;
   userEmail?: string;
 }> {
@@ -94,7 +94,7 @@ export async function loadSessions(): Promise<{
   }
 
   const { data, error } = await client.database
-    .from("ghost_sessions")
+    .from("echo_sessions")
     .select("*")
     .eq("user_id", authData.user.id)
     .order("created_at", { ascending: false })
@@ -105,7 +105,7 @@ export async function loadSessions(): Promise<{
   }
 
   return {
-    sessions: GhostSessionSchema.array().parse(data ?? []),
+    sessions: EchoSessionSchema.array().parse(data ?? []),
     mode: "insforge",
     userEmail: authData.user.email,
   };
@@ -117,8 +117,8 @@ function toSession(
   userId: string,
   createdAt: string,
   artifacts?: RunArtifacts,
-): GhostSession {
-  return GhostSessionSchema.parse({
+): EchoSession {
+  return EchoSessionSchema.parse({
     id: crypto.randomUUID(),
     user_id: userId,
     score: analysis.score,
@@ -175,7 +175,7 @@ export async function uploadRunArtifacts({
 
   const upload = async (key: string, body: Blob) => {
     const { data, error } = await client.storage
-      .from("ghost-runs")
+      .from("echo-runs")
       .upload(key, body);
     if (error) throw error;
     if (!data?.url || !data.key) {
@@ -212,19 +212,19 @@ export async function uploadRunArtifacts({
   };
 }
 
-function readLocalSessions(): GhostSession[] {
+function readLocalSessions(): EchoSession[] {
   if (typeof window === "undefined") {
     return [];
   }
 
   try {
     const value = window.localStorage.getItem(LOCAL_SESSION_KEY);
-    return value ? GhostSessionSchema.array().parse(JSON.parse(value)) : [];
+    return value ? EchoSessionSchema.array().parse(JSON.parse(value)) : [];
   } catch {
     return [];
   }
 }
 
-function writeLocalSessions(sessions: GhostSession[]) {
+function writeLocalSessions(sessions: EchoSession[]) {
   window.localStorage.setItem(LOCAL_SESSION_KEY, JSON.stringify(sessions));
 }

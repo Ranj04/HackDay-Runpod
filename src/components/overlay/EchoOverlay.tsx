@@ -1,5 +1,5 @@
 "use client";
-// Minimal form-vs-ghost: a faint blue IDEAL skeleton, your crisp bone skeleton,
+// Minimal form-vs-echo: a faint blue IDEAL skeleton, your crisp bone skeleton,
 // and a basketball in the shooting hand through release — auto-playing a smooth,
 // frame-interpolated loop so it reads as a person actually shooting.
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -11,7 +11,7 @@ import {
   drawBackdrop,
   drawBall,
   drawFlawMarker,
-  drawGhostLines,
+  drawEchoLines,
   drawPlayer,
   drawVignette,
   flawConnectionKeys,
@@ -19,7 +19,7 @@ import {
   torsoLengthPx,
 } from "./skeleton";
 
-export interface GhostOverlayProps {
+export interface EchoOverlayProps {
   result: AnalysisResult;
   width?: number;
   height?: number;
@@ -46,10 +46,10 @@ function lerpFrame(a: PoseFrame, b: PoseFrame, t: number): PoseFrame {
   };
 }
 
-export function GhostOverlay({ result, width = 440, height = 560, className, compact = false }: GhostOverlayProps) {
+export function EchoOverlay({ result, width = 440, height = 560, className, compact = false }: EchoOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const frames = result.capture.frames;
-  const ghostFrames = result.ghostRef;
+  const echoFrames = result.echoRef;
   const total = frames.length;
   const fps = Math.max(1, result.capture.fps);
   const releaseIndex =
@@ -87,13 +87,13 @@ export function GhostOverlay({ result, width = 440, height = 560, className, com
       }
     };
     for (const f of frames) consider(f.keypoints);
-    for (const g of ghostFrames) consider(g.keypoints);
+    for (const g of echoFrames) consider(g.keypoints);
     if (!Number.isFinite(minX)) return { s: 1, cx: width / 2, cy: height / 2 };
     const bwPx = Math.max(1, (maxX - minX) * width);
     const bhPx = Math.max(1, (maxY - minY) * height);
     const s = Math.max(0.9, Math.min(2.8, Math.min((width * 0.7) / bwPx, (height * 0.82) / bhPx)));
     return { s, cx: ((minX + maxX) / 2) * width, cy: ((minY + maxY) / 2) * height };
-  }, [frames, ghostFrames, width, height]);
+  }, [frames, echoFrames, width, height]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -151,13 +151,13 @@ export function GhostOverlay({ result, width = 440, height = 560, className, com
         drawVignette(ctx, width, height);
         return;
       }
-      const ghost = ghostFrames.length ? frameAt(ghostFrames, pos) : null;
+      const echoFrame = echoFrames.length ? frameAt(echoFrames, pos) : null;
 
       ctx.save();
       ctx.translate(width / 2, height / 2);
       ctx.scale(fit.s, fit.s);
       ctx.translate(-fit.cx, -fit.cy);
-      if (ghost) drawGhostLines(ctx, ghost, width, height, intro);
+      if (echoFrame) drawEchoLines(ctx, echoFrame, width, height, intro);
       drawPlayer(ctx, user, width, height, flawKeys);
       const ballR = Math.max(7, torsoLengthPx(user, width, height) * 0.17);
       const ball = ballAt(pos, user);
@@ -206,7 +206,7 @@ export function GhostOverlay({ result, width = 440, height = 560, className, com
     }
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [result, frames, ghostFrames, total, fps, releaseIndex, flawKeys, flawJoint, shootWrist, fit, width, height]);
+  }, [result, frames, echoFrames, total, fps, releaseIndex, flawKeys, flawJoint, shootWrist, fit, width, height]);
 
   const releasePct = total > 1 ? (releaseIndex / (total - 1)) * 100 : 0;
   const posPct = total > 1 ? (index / (total - 1)) * 100 : 0;
@@ -229,7 +229,7 @@ export function GhostOverlay({ result, width = 440, height = 560, className, com
         {!compact && (
           <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between p-3">
             <span className="rounded-full px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em]" style={{ background: "rgba(255,255,255,0.05)", color: "var(--muted-ink)" }}>
-              Form vs ghost
+              Form vs echo
             </span>
             {Math.abs(index - releaseIndex) <= 1 && (
               <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ background: "var(--blue)", color: "#04080f" }}>

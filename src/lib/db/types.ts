@@ -6,7 +6,7 @@ import {
   SeveritySchema,
 } from "@/lib/contracts";
 
-export const GhostSessionSchema = z.object({
+export const EchoSessionSchema = z.object({
   id: z.string(),
   user_id: z.string(),
   score: z.number(),
@@ -25,10 +25,10 @@ export const GhostSessionSchema = z.object({
   report_key: z.string().nullable().optional(),
 });
 
-export type GhostSession = z.infer<typeof GhostSessionSchema>;
+export type EchoSession = z.infer<typeof EchoSessionSchema>;
 export type PersistenceMode = "insforge" | "local-demo";
 
-export const RunArtifactsSchema = GhostSessionSchema.pick({
+export const RunArtifactsSchema = EchoSessionSchema.pick({
   report: true,
   clip_url: true,
   clip_key: true,

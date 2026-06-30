@@ -1,4 +1,4 @@
-create table if not exists public.ghost_sessions (
+create table if not exists public.echo_sessions (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
   score double precision not null check (score >= 0 and score <= 100),
@@ -12,23 +12,23 @@ create table if not exists public.ghost_sessions (
   created_at timestamptz not null default now()
 );
 
-create index if not exists ghost_sessions_user_created_idx
-  on public.ghost_sessions (user_id, created_at desc);
+create index if not exists echo_sessions_user_created_idx
+  on public.echo_sessions (user_id, created_at desc);
 
-alter table public.ghost_sessions enable row level security;
+alter table public.echo_sessions enable row level security;
 
 drop policy if exists "Players can insert their sessions"
-  on public.ghost_sessions;
+  on public.echo_sessions;
 create policy "Players can insert their sessions"
-  on public.ghost_sessions
+  on public.echo_sessions
   for insert
   to authenticated
   with check ((select auth.uid()) = user_id);
 
 drop policy if exists "Players can read their sessions"
-  on public.ghost_sessions;
+  on public.echo_sessions;
 create policy "Players can read their sessions"
-  on public.ghost_sessions
+  on public.echo_sessions
   for select
   to authenticated
   using ((select auth.uid()) = user_id);

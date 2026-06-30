@@ -1,6 +1,6 @@
-"""Ghost at Scale — GPU pose endpoint (Prompt A, Phase 1).
+"""Echo at Scale — GPU pose endpoint (Prompt A, Phase 1).
 
-Server-side pose estimation on a Runpod Flash GPU worker, replacing Ghost's old
+Server-side pose estimation on a Runpod Flash GPU worker, replacing Echo's old
 client-side MediaPipe step. RTMPose (via rtmlib) runs per video frame and emits
 per-frame keypoints. Queue-based decorator so the Phase-3 orchestrator can fan
 out across clips with `asyncio.gather`.
@@ -17,13 +17,13 @@ Output (consumed by flash/scoring.py in Phase 2):
       "keypoint_format": "coco17",
       "frames": [ {"t": 0.0, "keypoints": [{"name","x","y","score"}, ...17]}, ... ]
     }
-x/y are normalized to 0..1 (image-plane), matching Ghost's keypoint convention.
+x/y are normalized to 0..1 (image-plane), matching Echo's keypoint convention.
 """
 from runpod_flash import CudaVersion, Endpoint, GpuType, NetworkVolume
 
 
 @Endpoint(
-    name="ghost-pose",
+    name="echo-pose",
     gpu=GpuType.NVIDIA_GEFORCE_RTX_4090,
     workers=(0, 5),
     min_cuda_version=CudaVersion.V13_0,
@@ -33,7 +33,7 @@ from runpod_flash import CudaVersion, Endpoint, GpuType, NetworkVolume
     # (~156MB), but cold-start time is dominated by onnxruntime CUDA-EP init (~25s),
     # so the cache-hit speedup is modest — the volume's value is avoiding re-download
     # and keeping weights off the worker's ephemeral disk.
-    volume=NetworkVolume(name="ghost-rtmpose-cache", size=10),
+    volume=NetworkVolume(name="echo-rtmpose-cache", size=10),
     env={"HOME": "/runpod-volume"},
     # onnxruntime-gpu's CUDA-13 wheel doesn't bundle CUDA libs and the worker base
     # image doesn't reliably provide libcudart.so.13 — ship the CUDA-13 runtime via

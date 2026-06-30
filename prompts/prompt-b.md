@@ -1,4 +1,4 @@
-# Prompt B — Bright Data, RAG & UI (Ghost at Scale · Runpod Flash + Insforge)
+# Prompt B — Bright Data, RAG & UI (Echo at Scale · Runpod Flash + Insforge)
 
 **Run after Prompt 0 (cleanup) is pushed to `main`.** First: `git checkout main && git pull origin main`. Cleanup has stripped Tavily, kept Insforge intact, rewritten docs, and left the seam: `# TODO: Bright Data fetch -> embeddings -> Insforge pgvector (Prompt B, Phase 1)`. You fill that seam.
 
@@ -44,7 +44,7 @@ Expose RAG via `Endpoint()` + an HTTP route: `flaw_label` in → top drill out *
 **verify:** hit the route from `localhost:8888/docs` → relevant drill + sources from pgvector; force a miss → live Discover fallback returns a cited drill.
 
 ## Phase 3 — Report & overlay UI (on Insforge)
-Repoint the ghost-overlay to read keypoints from the endpoint response. Build the report view rendering the SHARED CONTRACT — worst reps + score + cited drill (clickable sources). Use **Insforge auth** for sign-in and **Insforge storage** to persist uploaded clips, keypoints, and run reports. Mock A's JSON until integration.
+Repoint the echo-overlay to read keypoints from the endpoint response. Build the report view rendering the SHARED CONTRACT — worst reps + score + cited drill (clickable sources). Use **Insforge auth** for sign-in and **Insforge storage** to persist uploaded clips, keypoints, and run reports. Mock A's JSON until integration.
 
 **verify:** signed-in user sees a ranked report (from mock contract JSON) with drills + sources; a run persists to Insforge and reloads.
 

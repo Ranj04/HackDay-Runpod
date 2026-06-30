@@ -1,9 +1,9 @@
-// Temporal + spatial alignment of the reference ghost onto the user's shot.
+// Temporal + spatial alignment of the reference echo onto the user's shot.
 //
 // Temporal: shift the reference so its release frame lands on the user's release
 // frame, so the two shots' phases line up.
 // Spatial: express the reference pose in the user's hip-center and torso-scale at
-// each frame, so the ghost overlays the user regardless of body size or position.
+// each frame, so the echo overlays the user regardless of body size or position.
 import type { PoseFrame, ShotCapture } from "../contracts";
 import { detectRelease } from "./detectRelease";
 import { hipCenter, torsoLength } from "./normalize";
@@ -31,7 +31,7 @@ function projectOntoUser(refFrame: PoseFrame, userFrame: PoseFrame): PoseFrame {
 }
 
 /**
- * Build the ghost reference track: one frame per user frame, with the reference
+ * Build the echo reference track: one frame per user frame, with the reference
  * release-aligned and re-projected onto the user. Same length as `user.frames`.
  */
 export function alignToReference(user: ShotCapture, reference: ShotCapture, userRelease: number): PoseFrame[] {

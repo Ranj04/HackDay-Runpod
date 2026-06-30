@@ -1,11 +1,11 @@
 // PERSON A (works on main) — overlay component surface. See OWNERSHIP.md.
-export { GhostOverlay, type GhostOverlayProps } from "./GhostOverlay";
+export { EchoOverlay, type EchoOverlayProps } from "./EchoOverlay";
 export { HeroShowcase } from "./HeroShowcase";
-export { INK, SURFACE, BONE, GHOST, SIGNAL, MUTED } from "./palette";
+export { INK, SURFACE, BONE, ECHO, SIGNAL, MUTED } from "./palette";
 export {
   drawBackdrop,
   drawVignette,
-  drawGhostLines,
+  drawEchoLines,
   drawPlayer,
   drawBall,
   drawFlawMarker,

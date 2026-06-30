@@ -9,7 +9,7 @@ export default function CapturePage() {
           Show us your shot.
         </h1>
         <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground">
-          Ghost tracks your mechanics from dip to release, then compares them
+          Echo tracks your mechanics from dip to release, then compares them
           with a temporally aligned reference.
         </p>
       </div>

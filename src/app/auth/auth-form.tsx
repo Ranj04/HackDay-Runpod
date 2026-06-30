@@ -105,7 +105,7 @@ export function AuthForm({
           type="submit"
         >
           {pending && <LoaderCircle className="animate-spin" />}
-          {mode === "sign-in" ? "Sign in to Ghost" : "Create account"}
+          {mode === "sign-in" ? "Sign in to Echo" : "Create account"}
         </Button>
       </form>
     </div>

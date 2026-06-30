@@ -36,11 +36,11 @@ export interface CoachedReport {
 
 export const sampleReport: RankReport = {
   reps: [
-    { rep_id: "r1", score: 41, flaw_label: "elbow_flare", keypoints_uri: "ghost-runs/r1/keypoints.json" },
-    { rep_id: "r2", score: 58, flaw_label: "shallow_dip", keypoints_uri: "ghost-runs/r2/keypoints.json" },
-    { rep_id: "r3", score: 33, flaw_label: "low_release", keypoints_uri: "ghost-runs/r3/keypoints.json" },
-    { rep_id: "r4", score: 88, flaw_label: "none", keypoints_uri: "ghost-runs/r4/keypoints.json" },
-    { rep_id: "r5", score: 47, flaw_label: "wrist_snap", keypoints_uri: "ghost-runs/r5/keypoints.json" },
+    { rep_id: "r1", score: 41, flaw_label: "elbow_flare", keypoints_uri: "echo-runs/r1/keypoints.json" },
+    { rep_id: "r2", score: 58, flaw_label: "shallow_dip", keypoints_uri: "echo-runs/r2/keypoints.json" },
+    { rep_id: "r3", score: 33, flaw_label: "low_release", keypoints_uri: "echo-runs/r3/keypoints.json" },
+    { rep_id: "r4", score: 88, flaw_label: "none", keypoints_uri: "echo-runs/r4/keypoints.json" },
+    { rep_id: "r5", score: 47, flaw_label: "wrist_snap", keypoints_uri: "echo-runs/r5/keypoints.json" },
   ],
   // rep_ids ascending by score — worst first.
   worst: ["r3", "r1", "r5", "r2", "r4"],

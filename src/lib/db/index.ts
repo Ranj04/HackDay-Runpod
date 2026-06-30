@@ -6,9 +6,9 @@ export {
   uploadRunArtifacts,
 } from "./sessions";
 export {
-  GhostSessionSchema,
+  EchoSessionSchema,
   RunArtifactsSchema,
-  type GhostSession,
+  type EchoSession,
   type PersistenceMode,
   type RunArtifacts,
 } from "./types";

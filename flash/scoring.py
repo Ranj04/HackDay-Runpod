@@ -1,9 +1,9 @@
-"""Ghost at Scale — form scoring (Prompt A, Phase 2).
+"""Echo at Scale — form scoring (Prompt A, Phase 2).
 
-A faithful Python port of Ghost's TypeScript shot-form analysis
+A faithful Python port of Echo's TypeScript shot-form analysis
 (src/lib/analysis/*). Pure CPU math over the pose endpoint's per-frame keypoints.
 The COCO-17 names emitted by flash/pose_endpoint.py already match the joint names
-Ghost's analysis reads (shoulder/elbow/wrist/hip/knee/ankle), so the keypoint
+Echo's analysis reads (shoulder/elbow/wrist/hip/knee/ankle), so the keypoint
 seam needs no remapping.
 
 Public API:

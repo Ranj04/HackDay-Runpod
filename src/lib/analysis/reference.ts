@@ -1,4 +1,4 @@
-// The reference "ghost" exemplar and its derived metrics.
+// The reference "echo" exemplar and its derived metrics.
 //
 // good-form.json is a single curated clean shot (a reference exemplar, NOT ground
 // truth — see fixtures/reference/README.md). Flaw thresholds are tuned against

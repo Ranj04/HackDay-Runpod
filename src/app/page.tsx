@@ -24,7 +24,7 @@ export default function Home() {
             <span className="text-[#5aa0ff]">you can’t feel.</span>
           </h1>
           <p className="mt-7 max-w-xl text-lg leading-8 text-muted-foreground">
-            Ghost turns one video into measured mechanics, a visual reference,
+            Echo turns one video into measured mechanics, a visual reference,
             and one cited drill to fix what matters most.
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-3">

@@ -14,11 +14,11 @@ const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrai
 
 export const metadata: Metadata = {
   title: {
-    default: "Ghost — AI Basketball Form Coach",
-    template: "%s · Ghost",
+    default: "Echo — AI Basketball Form Coach",
+    template: "%s · Echo",
   },
   description:
-    "Measure your basketball mechanics, compare your motion with a ghost reference, and get one cited drill to improve.",
+    "Measure your basketball mechanics, compare your motion with a echo reference, and get one cited drill to improve.",
 };
 
 export default function RootLayout({
@@ -37,9 +37,9 @@ export default function RootLayout({
                 className="flex items-center gap-2 font-heading text-lg font-semibold tracking-[-0.02em]"
               >
                 <span className="grid size-7 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_0_16px_color-mix(in_oklab,var(--primary),transparent_55%)]">
-                  G
+                  E
                 </span>
-                GHOST
+                ECHO
               </Link>
               <nav className="flex items-center gap-1 text-sm" aria-label="Primary navigation">
                 <Link

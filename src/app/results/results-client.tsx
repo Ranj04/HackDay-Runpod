@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { LoaderCircle } from "lucide-react";
 
-import { GhostOverlay } from "@/components/overlay";
+import { EchoOverlay } from "@/components/overlay";
 import { ResultsView } from "@/components/results";
 import { loadCapture, loadCapturedClip } from "@/lib/capture-store";
 import {
@@ -66,7 +66,7 @@ export function ResultsClient() {
       form.set("capture", JSON.stringify(capture));
       form.set(
         "clip",
-        new File([clip], `ghost-${capture.id}.webm`, {
+        new File([clip], `echo-${capture.id}.webm`, {
           type: clip.type || "video/webm",
         }),
       );
@@ -155,7 +155,7 @@ export function ResultsClient() {
       <ResultsView
         analysis={state.analysis}
         coaching={state.coaching}
-        ghostOverlay={<GhostOverlay result={state.analysis} />}
+        echoOverlay={<EchoOverlay result={state.analysis} />}
         saveAction={
           <SaveSessionButton
             analysis={state.analysis}

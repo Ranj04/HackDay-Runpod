@@ -1,6 +1,6 @@
 // Body-size normalization. To compare two shooters of different heights/builds,
 // we hip-center each frame and scale by torso length, so a "gap" reflects form,
-// not body size. The same transform lets us re-project the reference ghost onto
+// not body size. The same transform lets us re-project the reference echo onto
 // the user for overlay.
 import type { PoseFrame } from "../contracts";
 import { dist, kp, type Pt } from "./geometry";

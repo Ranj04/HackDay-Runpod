@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 export interface ResultsViewProps {
   analysis: AnalysisResult;
   coaching: CoachingResult;
-  ghostOverlay?: ReactNode;
+  echoOverlay?: ReactNode;
   saveAction?: ReactNode;
 }
 
@@ -37,7 +37,7 @@ const severityLabel = {
 export function ResultsView({
   analysis,
   coaching,
-  ghostOverlay,
+  echoOverlay,
   saveAction,
 }: ResultsViewProps) {
   const { topFlaw } = analysis;
@@ -106,7 +106,7 @@ export function ResultsView({
           </CardHeader>
           <CardContent>
             <div className="mt-2 overflow-hidden rounded-2xl border bg-[#0e1420]">
-              {ghostOverlay ?? (
+              {echoOverlay ?? (
                 <div className="relative grid min-h-52 place-items-center">
                   <div className="capture-grid absolute inset-0 opacity-25" />
                   <div className="relative flex items-center gap-5">
@@ -114,7 +114,7 @@ export function ResultsView({
                     <div className="h-28 w-px -rotate-6 bg-[#2e86ff] shadow-[10px_18px_0_#2e86ff,-8px_52px_0_#2e86ff]" />
                   </div>
                   <span className="absolute bottom-4 left-4 text-xs font-medium text-muted-foreground">
-                    Ghost overlay slot
+                    Echo overlay slot
                   </span>
                 </div>
               )}

@@ -1,10 +1,10 @@
 "use client";
-// Landing hero: the real form-vs-ghost loop on sample data — not a decorative
+// Landing hero: the real form-vs-echo loop on sample data — not a decorative
 // placeholder. Auto-plays inside the tilted product card.
 import { useEffect, useRef, useState } from "react";
 import sample from "../../../fixtures/sample-shot.json";
 import { analyzeShot } from "@/lib/analysis";
-import { GhostOverlay } from "./GhostOverlay";
+import { EchoOverlay } from "./EchoOverlay";
 import { ShotCaptureSchema, type AnalysisResult } from "@/lib/contracts";
 
 function HeroScanPulse() {
@@ -53,7 +53,7 @@ export function HeroShowcase() {
           {!result ? (
             <HeroScanPulse />
           ) : (
-            <GhostOverlay
+            <EchoOverlay
               compact
               result={result}
               width={size.w}

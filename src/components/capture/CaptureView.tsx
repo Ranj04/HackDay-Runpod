@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PoseLandmarker, type NormalizedLandmark } from "@mediapipe/tasks-vision";
 import { Button } from "@/components/ui/button";
-import { BONE, GHOST, MUTED, SIGNAL } from "@/components/overlay/palette";
+import { BONE, ECHO, MUTED, SIGNAL } from "@/components/overlay/palette";
 import { useCamera } from "@/lib/vision/useCamera";
 import { createPoseLandmarker } from "@/lib/vision/poseLandmarker";
 import { landmarksToKeypoints } from "@/lib/vision/landmarks";
@@ -307,9 +307,9 @@ export function CaptureView({ onCapture, className, targetFps, precision }: Capt
         {ready && !recording && (
           <span
             className="absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/70 px-3 py-1 text-xs font-medium"
-            style={{ color: capturable ? GHOST : MUTED }}
+            style={{ color: capturable ? ECHO : MUTED }}
           >
-            <span className="h-2 w-2 rounded-full" style={{ background: capturable ? GHOST : MUTED }} />
+            <span className="h-2 w-2 rounded-full" style={{ background: capturable ? ECHO : MUTED }} />
             {capturable ? "Ready" : "Not ready"}
           </span>
         )}

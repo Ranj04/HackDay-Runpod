@@ -14,7 +14,7 @@ JSON-serializable object:
     }
 
 If ``topics`` is omitted, the worker ingests the five flaw classes used by the
-current Ghost scorer. Every stored chunk retains its source URL and title.
+current Echo scorer. Every stored chunk retains its source URL and title.
 
 Local verification:
 
@@ -43,7 +43,7 @@ def _worker_environment() -> dict[str, str]:
 
 
 @Endpoint(
-    name="ghost-coaching-ingest",
+    name="echo-coaching-ingest",
     cpu=CpuInstanceType.CPU5C_2_4,
     datacenter=DataCenter.EU_RO_1,
     workers=(0, 1),

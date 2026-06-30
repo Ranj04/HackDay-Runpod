@@ -10,9 +10,9 @@ export type ReferenceBuilderStatus = "curated-reference";
  */
 export const deployment = {
   provider: "vercel",
-  project: "ghost-form-coach",
+  project: "echo-form-coach",
   status: "production" as DeploymentStatus,
-  url: "https://ghost-form-coach.vercel.app",
+  url: "https://echo-form-coach.vercel.app",
   deployedAt: "2026-06-28",
   referenceBuilder: {
     provider: "nebius",

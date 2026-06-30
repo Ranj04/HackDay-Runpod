@@ -28,7 +28,7 @@ def _worker_environment() -> dict[str, str]:
 
 
 rag = Endpoint(
-    name="ghost-coaching-rag",
+    name="echo-coaching-rag",
     cpu=CpuInstanceType.CPU5C_2_4,
     datacenter=DataCenter.EU_RO_1,
     workers=(0, 2),

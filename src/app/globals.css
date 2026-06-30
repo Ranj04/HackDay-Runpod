@@ -66,13 +66,13 @@
 }
 
 /*
- * Ghost — blue + orange, complementary (60-30-10).
+ * Echo — blue + orange, complementary (60-30-10).
  *   ~60% blue/navy + neutral surfaces · ~30% secondary structure · ~10% ORANGE accent only.
  *   blue = data / precision / trust   ·   orange = energy / action / basketball.
  *
  * Token layers, single source of truth:
  *   1. Brand primitives (--ink…--orange): theme-independent values the dark <canvas>
- *      chrome (GhostOverlay / HeroShowcase) and CSS utilities read directly. Kept stable.
+ *      chrome (EchoOverlay / HeroShowcase) and CSS utilities read directly. Kept stable.
  *   2. Primitive scales (--blue-*, --orange-*, --n-*): raw palette, verify-contrasted.
  *   3. shadcn semantic tokens (--background…--ring): repointed; drive every component.
  *   4. Semantic roles + states: surface / text / accent-brand / success / warning / info / error.

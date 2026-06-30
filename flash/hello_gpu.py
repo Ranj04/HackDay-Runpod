@@ -13,12 +13,12 @@ RUNPOD_API_KEY in the env (or `flash login`).
 Teardown — `flash dev` deploys under a `live-` prefix; scope it (never --all on
 a shared account):
 
-    kill %1; flash undeploy live-ghost-hello-gpu --force
+    kill %1; flash undeploy live-echo-hello-gpu --force
 """
 from runpod_flash import Endpoint, GpuType
 
 gpu = Endpoint(
-    name="ghost-hello-gpu",
+    name="echo-hello-gpu",
     gpu=GpuType.NVIDIA_GEFORCE_RTX_4090,
     workers=(0, 1),
     dependencies=["torch"],

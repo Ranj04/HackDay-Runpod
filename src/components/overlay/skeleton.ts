@@ -1,4 +1,4 @@
-// Canvas drawing for the form-vs-ghost signature, keyed by landmark NAME so it
+// Canvas drawing for the form-vs-echo signature, keyed by landmark NAME so it
 // works for a live 33-point MediaPipe capture and the 13-name fixtures.
 //
 // Design: minimal "motion-capture at night." A faint blue IDEAL skeleton, your
@@ -6,7 +6,7 @@
 // The motion (smooth auto-loop) + the ball is what reads as "a person shooting".
 import type { JointMetrics, PoseFrame } from "@/lib/contracts";
 import { isVisible } from "@/lib/vision/visibility";
-import { BONE, GHOST, GHOST_RGB, INK, SIGNAL } from "./palette";
+import { BONE, ECHO, ECHO_RGB, INK, SIGNAL } from "./palette";
 
 export const POSE_CONNECTIONS_BY_NAME: [string, string][] = [
   ["left_shoulder", "right_shoulder"],
@@ -112,8 +112,8 @@ export function drawBackdrop(ctx: CanvasRenderingContext2D, w: number, h: number
   ctx.fillRect(0, 0, w, h);
 
   const floor = ctx.createRadialGradient(w * 0.5, h * 0.93, 4, w * 0.5, h * 0.93, w * 0.45);
-  floor.addColorStop(0, `rgba(${GHOST_RGB}, 0.08)`);
-  floor.addColorStop(1, `rgba(${GHOST_RGB}, 0)`);
+  floor.addColorStop(0, `rgba(${ECHO_RGB}, 0.08)`);
+  floor.addColorStop(1, `rgba(${ECHO_RGB}, 0)`);
   ctx.fillStyle = floor;
   ctx.fillRect(0, h * 0.72, w, h * 0.28);
 }
@@ -127,7 +127,7 @@ export function drawVignette(ctx: CanvasRenderingContext2D, w: number, h: number
 }
 
 /** The IDEAL: a faint, thin blue reference skeleton behind you. `alpha` eases it in. */
-export function drawGhostLines(ctx: CanvasRenderingContext2D, frame: PoseFrame, w: number, h: number, alpha = 1): void {
+export function drawEchoLines(ctx: CanvasRenderingContext2D, frame: PoseFrame, w: number, h: number, alpha = 1): void {
   const map = pxMap(frame, w, h);
   const T = torsoScale(map, w, h);
   ctx.save();
@@ -135,11 +135,11 @@ export function drawGhostLines(ctx: CanvasRenderingContext2D, frame: PoseFrame, 
   ctx.globalAlpha = 0.32 * alpha;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.strokeStyle = GHOST;
-  ctx.shadowColor = GHOST;
+  ctx.strokeStyle = ECHO;
+  ctx.shadowColor = ECHO;
   ctx.shadowBlur = 6;
   ctx.lineWidth = Math.max(1.5, Math.min(3, T * 0.03));
-  strokeSkeleton(ctx, map, undefined, undefined, GHOST);
+  strokeSkeleton(ctx, map, undefined, undefined, ECHO);
   ctx.restore();
 }
 

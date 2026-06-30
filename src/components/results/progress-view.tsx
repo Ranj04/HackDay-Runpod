@@ -8,13 +8,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { GhostSession, PersistenceMode } from "@/lib/db";
+import type { EchoSession, PersistenceMode } from "@/lib/db";
 
 export function ProgressView({
   sessions,
   mode,
 }: {
-  sessions: GhostSession[];
+  sessions: EchoSession[];
   mode: PersistenceMode;
 }) {
   const recent = sessions.slice(0, 6);
@@ -150,7 +150,7 @@ function Stat({
   );
 }
 
-function ScoreChart({ sessions }: { sessions: GhostSession[] }) {
+function ScoreChart({ sessions }: { sessions: EchoSession[] }) {
   const chronological = [...sessions].reverse();
   const points = chronological
     .map((session, index) => {

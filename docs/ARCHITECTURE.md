@@ -1,10 +1,10 @@
-# Ghost at Scale — Architecture
+# Echo at Scale — Architecture
 
 ## 1. Problem
 
 Most players can't see their own jump shot. The flaw — a flying elbow, a guide
 hand that pushes, a dip that's too shallow — lives in a view you never get to
-watch. Ghost recreates the coach's eye: it films one shot, finds the single
+watch. Echo recreates the coach's eye: it films one shot, finds the single
 biggest form flaw, shows the gap against a reference pose, and hands back one
 cited drill plus a generated coaching note. **"At Scale"** means the heavy step
 — pose estimation — runs on fanned-out GPU workers, not the phone.
@@ -17,16 +17,16 @@ cited drill plus a generated coaching note. **"At Scale"** means the heavy step
 | **Web data / retrieval** | **Bright Data** | Fetch drill + technique content to seed and refresh the coaching corpus | Discover API + pre-built scrapers + Web Unlocker via `brightdata-sdk` |
 | **Backend** | **InsForge** | Auth, Postgres session history, **pgvector** coaching store, S3-style storage | `@insforge/sdk` (auth/db), pgvector tables |
 | **Coaching LLM** | **Nebius** | Writes the grounded coaching note from retrieved sources + measured numbers | OpenAI-compatible Token Factory endpoint |
-| **App** | **Next.js** | Capture UI, ghost-overlay canvas, results, history | App Router, Server Actions |
+| **App** | **Next.js** | Capture UI, echo-overlay canvas, results, history | App Router, Server Actions |
 
 ## 3. Component → layer map
 
 - `src/components/capture/**`, `src/lib/vision/**` — client capture + live preview skeleton. **App.** Pose moves to Flash (below); client pose stays as a fallback only.
 - **Pose endpoint** (Prompt A) — server-side GPU pose on **Runpod Flash**. Input: one clip. Output: per-frame keypoints in the existing `PoseFrame`/`Keypoint` schema (`src/lib/contracts.ts`), keyed by MediaPipe landmark **name** so the analysis + overlay consumers are unchanged.
 - `src/lib/analysis/**` — release detection, metric extraction, normalize/align, flaw ranking, scoring. **Pure TS, layer-agnostic.** Consumes keypoints from the Flash endpoint.
-- `src/components/overlay/**` — the form-vs-ghost canvas. Renders from `AnalysisResult.ghostRef`. Unchanged.
+- `src/components/overlay/**` — the form-vs-echo canvas. Renders from `AnalysisResult.echoRef`. Unchanged.
 - `src/lib/coach/**` — the coaching chain. Retrieval is the **Bright Data seam** (§4); generation is **Nebius**; `curated.ts` is the offline fallback.
-- `src/lib/db/**`, `src/app/auth/**`, `src/app/api/auth/**`, `src/proxy.ts` — **InsForge** auth + the `ghost_sessions` table (RLS scoped to `auth.uid()`). pgvector tables for the coaching store are added in Prompt B.
+- `src/lib/db/**`, `src/app/auth/**`, `src/app/api/auth/**`, `src/proxy.ts` — **InsForge** auth + the `echo_sessions` table (RLS scoped to `auth.uid()`). pgvector tables for the coaching store are added in Prompt B.
 
 ## 4. The Bright Data retrieval seam
 
@@ -57,9 +57,9 @@ flowchart TD
     flaw --> coach[coachFlaw]
     coach --> seam[Bright Data seam -> embeddings -> InsForge pgvector]
     seam --> gen[Nebius: grounded coaching note]
-    flaw --> persist[InsForge: ghost_sessions]
+    flaw --> persist[InsForge: echo_sessions]
     gen --> persist
-    persist --> results[Results + ghost overlay]
+    persist --> results[Results + echo overlay]
 ```
 
 ## 5. Key decisions

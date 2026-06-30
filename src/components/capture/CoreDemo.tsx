@@ -1,6 +1,6 @@
 "use client";
 // Standalone proof of the vision + coaching core: record -> analyze -> coach ->
-// ghost overlay, with no dependency on app routing or the platform half. Person B
+// echo overlay, with no dependency on app routing or the platform half. Person B
 // owns src/app; this component lets the core be demoed/verified on its own.
 //
 // Note: coachFlaw runs in curated mode here (client, no keys). For live
@@ -9,7 +9,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CaptureView } from "./CaptureView";
-import { GhostOverlay } from "@/components/overlay";
+import { EchoOverlay } from "@/components/overlay";
 import { analyzeShot, detectShootingSide } from "@/lib/analysis";
 import { coachFlaw, lastCoachSource } from "@/lib/coach";
 import type { AnalysisResult, CoachingResult, ShotCapture } from "@/lib/contracts";
@@ -50,7 +50,7 @@ export function CoreDemo({ className }: { className?: string }) {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>2 · Your form vs the ghost</CardTitle>
+            <CardTitle>2 · Your form vs the echo</CardTitle>
             {result && (
               <Badge variant={result.topFlaw.severity === "high" ? "destructive" : "secondary"}>
                 Score {result.score}
@@ -62,7 +62,7 @@ export function CoreDemo({ className }: { className?: string }) {
             {!busy && !result && (
               <p className="text-sm text-muted-foreground">Record a shot to see your skeleton against the reference.</p>
             )}
-            {result && <GhostOverlay result={result} width={420} height={520} />}
+            {result && <EchoOverlay result={result} width={420} height={520} />}
           </CardContent>
         </Card>
       </div>

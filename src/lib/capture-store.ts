@@ -4,7 +4,7 @@
 // demo robust — a reload re-runs the same real shot instead of blanking.
 import { ShotCaptureSchema, type ShotCapture } from "@/lib/contracts";
 
-const KEY = "ghost.capture.v1";
+const KEY = "echo.capture.v1";
 let capturedClip: Blob | null = null;
 
 export function saveCapture(capture: ShotCapture, clip?: Blob): void {

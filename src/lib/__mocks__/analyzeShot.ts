@@ -43,7 +43,7 @@ const athleteFrames: PoseFrame[] = [
   },
 ];
 
-const ghostFrames: PoseFrame[] = athleteFrames.map((frame) => ({
+const echoFrames: PoseFrame[] = athleteFrames.map((frame) => ({
   ...frame,
   keypoints: frame.keypoints.map((point) =>
     point.name === "elbow"
@@ -91,7 +91,7 @@ export const analyzeShot: AnalyzeShot = async (capture) =>
       },
     ],
     score: 78,
-    ghostRef: ghostFrames,
+    echoRef: echoFrames,
   });
 export const coachFlaw: CoachFlaw = async (flaw) =>
   CoachingResultSchema.parse({

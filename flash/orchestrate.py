@@ -1,4 +1,4 @@
-"""Ghost at Scale — fan-out orchestrator (Prompt A, Phase 3).
+"""Echo at Scale — fan-out orchestrator (Prompt A, Phase 3).
 
 The Runpod showcase: take N clips, dispatch them to the GPU pose endpoint in
 parallel with `asyncio.gather` (workers scale 0->N), score each on the CPU, and

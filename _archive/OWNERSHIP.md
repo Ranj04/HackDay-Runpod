@@ -1,6 +1,6 @@
 # Ownership Map
 
-Two people build Ghost in parallel. There are **no feature branches** — both
+Two people build Echo in parallel. There are **no feature branches** — both
 partners commit directly to `main` and `git pull --rebase origin main` before
 every push. Stay inside your folders. Anything under **SHARED — FROZEN**
 requires a NOTIFY PARTNER gate before editing.

@@ -79,7 +79,7 @@ export type Flaw = z.infer<typeof FlawSchema>;
 /**
  * The full output of the analysis layer for one shot: metrics, the single
  * biggest flaw to coach, all flaws ranked, an overall score, and the
- * temporally-aligned reference ("ghost") pose to overlay.
+ * temporally-aligned reference ("echo") pose to overlay.
  */
 export const AnalysisResultSchema = z.object({
   capture: ShotCaptureSchema,
@@ -87,7 +87,7 @@ export const AnalysisResultSchema = z.object({
   topFlaw: FlawSchema,
   allFlaws: z.array(FlawSchema),
   score: z.number(),
-  ghostRef: z.array(PoseFrameSchema),
+  echoRef: z.array(PoseFrameSchema),
 });
 export type AnalysisResult = z.infer<typeof AnalysisResultSchema>;
 

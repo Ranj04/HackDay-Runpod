@@ -6,13 +6,8 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import type { AnalysisResult, CoachingResult } from "@/lib/contracts";
-import {
-  getPersistenceMode,
-  isInsForgeConfigured,
-  saveSession,
-  uploadRunArtifacts,
-} from "@/lib/db";
-import { saveSessionAction } from "@/lib/db/server";
+import { getPersistenceMode, isInsForgeConfigured, saveSession } from "@/lib/db";
+import { saveCompleteSessionAction } from "@/lib/db/server";
 
 export function SaveSessionButton({
   analysis,
@@ -40,13 +35,19 @@ export function SaveSessionButton({
 
     try {
       if (isInsForgeConfigured()) {
-        const artifacts = await uploadRunArtifacts({
-          analysis,
-          coaching,
-          clip,
-          compute,
-        });
-        await saveSessionAction(analysis, coaching, artifacts);
+        const form = new FormData();
+        form.set("analysis", JSON.stringify(analysis));
+        form.set("coaching", JSON.stringify(coaching));
+        form.set("compute", JSON.stringify(compute));
+        if (clip) {
+          form.set(
+            "clip",
+            new File([clip], `echo-${analysis.capture.id}.webm`, {
+              type: clip.type || "video/webm",
+            }),
+          );
+        }
+        await saveCompleteSessionAction(form);
       } else {
         await saveSession(analysis, coaching);
       }

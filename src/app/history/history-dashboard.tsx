@@ -10,7 +10,7 @@ import { ProgressView } from "@/components/results";
 import {
   isInsForgeConfigured,
   loadSessions,
-  type GhostSession,
+  type EchoSession,
   type PersistenceMode,
 } from "@/lib/db";
 import { loadSessionsAction } from "@/lib/db/server";
@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { signOut } from "../auth/actions";
 
 interface HistoryState {
-  sessions: GhostSession[];
+  sessions: EchoSession[];
   mode: PersistenceMode;
   userEmail?: string;
 }

@@ -1,6 +1,6 @@
 # Prompt 0 — Cleanup & Refactor (RUN FIRST, on `main`)
 
-Run this **once, by one person, on `main`, before anyone branches.** It de-sponsors the legacy Ghost repo, rewrites the docs to the new context, and leaves a clean **Bright Data seam** for the RAG. When it's done, both teammates pull `main`, branch `stream-a` / `stream-b`, and run Prompt A / Prompt B in parallel.
+Run this **once, by one person, on `main`, before anyone branches.** It de-sponsors the legacy Echo repo, rewrites the docs to the new context, and leaves a clean **Bright Data seam** for the RAG. When it's done, both teammates pull `main`, branch `stream-a` / `stream-b`, and run Prompt A / Prompt B in parallel.
 
 ---
 
@@ -36,7 +36,7 @@ After I confirm:
 
 ## Phase 2 — Doc rewrite
 - Move old build-prompt/spec `.md` files to `./_archive/` so no agent re-reads them.
-- Rewrite `README.md` for **Ghost at Scale on Runpod Flash**, with **Bright Data** named as the web-data/retrieval layer.
+- Rewrite `README.md` for **Echo at Scale on Runpod Flash**, with **Bright Data** named as the web-data/retrieval layer.
 - Add `ARCHITECTURE.md` mapping each component to its Flash construct + the Bright Data seam.
 
 **verify:** no active `.md` references the old hackathon or sponsors.
