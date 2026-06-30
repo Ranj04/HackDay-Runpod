@@ -5,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { CoachedRep, CoachedReport, RankCost } from "@/lib/sample-report";
 import { cn } from "@/lib/utils";
 
+import { RepRadar } from "./rep-radar";
+
 const FLAW_LABELS: Record<string, string> = {
   elbow_flare: "Elbow flaring out",
   shallow_dip: "Shallow leg dip",
@@ -91,6 +93,13 @@ function RepCard({ rep, rank, total }: { rep: CoachedRep; rank: number; total: n
             {flawLabel(rep.flaw_label)}
           </Badge>
         </div>
+
+        {/* Per-rep radar from the contract's `dimensions` (omitted when absent). */}
+        {rep.dimensions ? (
+          <div className="flex shrink-0 justify-center sm:w-[150px]">
+            <RepRadar dimensions={rep.dimensions} tone={isWorst ? "worst" : "default"} />
+          </div>
+        ) : null}
 
         <div className="flex-1">
           {rep.coaching ? (
