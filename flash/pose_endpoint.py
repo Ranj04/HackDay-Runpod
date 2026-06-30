@@ -27,9 +27,12 @@ from runpod_flash import CudaVersion, Endpoint, GpuType, NetworkVolume
     gpu=GpuType.NVIDIA_GEFORCE_RTX_4090,
     workers=(0, 5),
     min_cuda_version=CudaVersion.V13_0,
-    # Phase 5: cache the RTMPose ONNX weights on a NetworkVolume so they download
-    # once, not on every cold start. rtmlib caches under ~/.cache/rtmlib, so point
-    # HOME at the mounted volume (/runpod-volume) to persist them across workers.
+    # Phase 5: cache the RTMPose ONNX weights on a NetworkVolume. rtmlib caches
+    # under ~/.cache/rtmlib, so point HOME at the mounted volume (/runpod-volume)
+    # to persist weights across workers. Measured: weights do persist to the volume
+    # (~156MB), but cold-start time is dominated by onnxruntime CUDA-EP init (~25s),
+    # so the cache-hit speedup is modest — the volume's value is avoiding re-download
+    # and keeping weights off the worker's ephemeral disk.
     volume=NetworkVolume(name="ghost-rtmpose-cache", size=10),
     env={"HOME": "/runpod-volume"},
     # onnxruntime-gpu's CUDA-13 wheel doesn't bundle CUDA libs and the worker base
@@ -168,4 +171,11 @@ async def pose(clip: dict) -> dict:
         # Phase 5 cost-panel signals (GPU-side timing for this rep).
         "gpu_ms": round((time.time() - _t0) * 1000.0, 1),
         "model_load_ms": round(_model_load_ms, 1),
+        # Phase 5 volume-cache evidence: where rtmlib cached weights + how much.
+        "cache_root": os.path.join(os.path.expanduser("~"), ".cache", "rtmlib"),
+        "cache_mb": round(sum(
+            os.path.getsize(f)
+            for f in glob.glob(os.path.join(os.path.expanduser("~"), ".cache", "rtmlib", "**", "*"), recursive=True)
+            if os.path.isfile(f)
+        ) / 1e6, 1),
     }

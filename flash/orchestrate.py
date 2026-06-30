@@ -17,6 +17,7 @@ import asyncio
 import json
 import os
 import sys
+import time
 import urllib.request
 
 # Make `scoring` importable whether run as a script (cwd=flash/) or imported by
@@ -49,11 +50,14 @@ async def rank(clips: list[dict], pose_call, reference: dict | None = None) -> d
     )
 
     reps = []
+    gpu_ms_total = 0.0          # Phase 5 cost panel: GPU-side compute summed over reps
+    cpu_t0 = time.time()        # CPU-side = local scoring time
     for clip, out in zip(clips, outputs):
         if isinstance(out, Exception) or not isinstance(out, dict) or "frames" not in out:
             reps.append({"rep_id": clip.get("rep_id"), "score": 0.0,
                          "flaw_label": "error", "keypoints_uri": clip.get("keypoints_uri")})
             continue
+        gpu_ms_total += float(out.get("gpu_ms", 0.0))
         res = score_rep(out, ref)
         reps.append({
             "rep_id": clip.get("rep_id"),
@@ -61,9 +65,20 @@ async def rank(clips: list[dict], pose_call, reference: dict | None = None) -> d
             "flaw_label": res["flaw_label"],
             "keypoints_uri": clip.get("keypoints_uri"),  # optional; B persists/sets it
         })
+    cpu_ms = (time.time() - cpu_t0) * 1000.0
 
     reps.sort(key=lambda r: r["score"])  # ascending — worst first
-    return {"reps": reps, "worst": [r["rep_id"] for r in reps]}
+    return {
+        "reps": reps,
+        "worst": [r["rep_id"] for r in reps],
+        # Additive cost panel for B's UI; the {reps, worst} contract is unchanged.
+        "cost": {
+            "gpu_seconds": round(gpu_ms_total / 1000.0, 2),
+            "cpu_seconds": round(cpu_ms / 1000.0, 3),
+            "workers": len(clips),
+            "reps": len(reps),
+        },
+    }
 
 
 # --- Mock RAG (Phase 4): stub B's drill lookup so the pipeline runs alone -----
