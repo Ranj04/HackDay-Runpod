@@ -43,6 +43,15 @@ async def rank(clips: list[dict], pose_call, reference: dict | None = None) -> d
     Fan-out is the single `asyncio.gather` below: one in-flight pose job per clip,
     so the GPU endpoint scales 0->N workers. A failed rep scores 0 / "error" so one
     bad clip never sinks the whole batch.
+
+    SHARED CONTRACT — additive VIZ fields (optional; consumers ignore when absent):
+      reps[].dimensions : per-axis 0-100 sub-scores {release_angle, arc, knee_bend,
+                          follow_through} surfaced from the scorer (100 = matches
+                          the reference). Does NOT change `score` or `flaw_label`.
+      timeline          : one {rep_id, worker_id, started_at, finished_at} per clip,
+                          timestamps in seconds relative to batch start. Intervals
+                          overlap (parallel GPU execution); measurement only — the
+                          dispatch/parallelism is untouched.
     """
     ref = reference if reference is not None else reference_metrics()
     outputs = await asyncio.gather(
