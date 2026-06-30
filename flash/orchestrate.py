@@ -54,8 +54,37 @@ async def rank(clips: list[dict], pose_call, reference: dict | None = None) -> d
                           dispatch/parallelism is untouched.
     """
     ref = reference if reference is not None else reference_metrics()
+
+    # Phase 2 (viz): measure the fan-out. Wrap each dispatch to stamp when it
+    # starts/finishes relative to batch start — WITHOUT touching the dispatch
+    # itself: the single `asyncio.gather` below still schedules every clip
+    # concurrently, so the recorded intervals overlap exactly as the real
+    # parallel GPU run does. The wrapper re-raises, so failures still surface to
+    # gather's return_exceptions path (and the clip still gets a timeline entry).
+    batch_t0 = time.time()
+    timeline: list = [None] * len(clips)  # filled by index -> stays rep-ordered
+
+    async def _timed(i: int, clip: dict):
+        started = time.time() - batch_t0
+        out = None
+        try:
+            out = await pose_call(clip)
+            return out
+        finally:
+            finished = time.time() - batch_t0
+            # Prefer a real worker/host id if the endpoint ever returns one;
+            # otherwise label the dispatch slot (one worker per clip in the 0->N
+            # fan-out, matching the endpoint's workers=(0, N)).
+            wid = out.get("worker_id") if isinstance(out, dict) else None
+            timeline[i] = {
+                "rep_id": clip.get("rep_id"),
+                "worker_id": wid or f"w{i + 1}",
+                "started_at": round(started, 3),
+                "finished_at": round(finished, 3),
+            }
+
     outputs = await asyncio.gather(
-        *[pose_call(c) for c in clips], return_exceptions=True
+        *[_timed(i, c) for i, c in enumerate(clips)], return_exceptions=True
     )
 
     reps = []
@@ -83,6 +112,9 @@ async def rank(clips: list[dict], pose_call, reference: dict | None = None) -> d
     return {
         "reps": reps,
         "worst": [r["rep_id"] for r in reps],
+        # Additive VIZ field: measured fan-out timing (seconds from batch start),
+        # one entry per clip, in dispatch order. Overlapping intervals = parallel.
+        "timeline": timeline,
         # Additive cost panel for B's UI; the {reps, worst} contract is unchanged.
         "cost": {
             "gpu_seconds": round(gpu_ms_total / 1000.0, 2),
@@ -147,7 +179,43 @@ def http_pose_call_factory(base_url: str):
     return call
 
 
+async def _verify_timeline() -> None:
+    """Offline Phase 2 verify: no GPU, no network. A fake pose_call sleeps, so the
+    recorded timeline must show one entry per clip with OVERLAPPING intervals and a
+    total wall-time near a single sleep (not the sum) — proving parallel dispatch is
+    preserved and the measurement is faithful."""
+    sleep_s, n = 0.2, 5
+
+    async def fake_pose(clip: dict) -> dict:
+        await asyncio.sleep(sleep_s)          # stand in for one GPU pose job
+        return {"frames": [], "rep_id": clip["rep_id"]}
+
+    clips = [{"rep_id": f"r{i + 1}"} for i in range(n)]
+    wall_t0 = time.time()
+    report = await rank(clips, fake_pose)
+    wall = time.time() - wall_t0
+    tl = report["timeline"]
+    print(json.dumps(tl, indent=2))
+
+    assert len(tl) == n, f"one timeline entry per clip: {len(tl)} != {n}"
+    assert all(e is not None for e in tl), "every clip must record a timeline entry"
+    starts = [e["started_at"] for e in tl]
+    finishes = [e["finished_at"] for e in tl]
+    # Latest start precedes earliest finish => all N are in flight simultaneously.
+    assert max(starts) < min(finishes), f"intervals must overlap (parallel): {tl}"
+    # Wall-time ~ one sleep, not n*sleep => parallelism preserved + matches real run.
+    assert wall < sleep_s * 2, f"parallel wall {wall:.3f}s should be ~{sleep_s}s, not {n * sleep_s}s"
+    assert max(finishes) <= wall + 0.05, "timeline finish must match real wall-clock"
+    assert len({e["worker_id"] for e in tl}) == n, "one worker id per concurrent clip"
+    print(f"\nPhase 2 verify: PASS  (wall={wall:.3f}s for {n}×{sleep_s}s clips, "
+          f"overlap window={min(finishes) - max(starts):.3f}s)")
+
+
 if __name__ == "__main__":
+    if os.environ.get("VERIFY_TIMELINE"):
+        asyncio.run(_verify_timeline())
+        raise SystemExit(0)
+
     # Dev fan-out: requires a running `flash dev` and a CLIP_URL. Submits N clips
     # in parallel and prints the ranked report.
     base = os.environ.get("FLASH_BASE", "http://localhost:8888")
