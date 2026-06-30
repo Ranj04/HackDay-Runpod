@@ -1,0 +1,27 @@
+{
+  "name": "Ghost Shot Coach",
+  "version": "1.0.0",
+  "description": "Given a measured basketball shooting-form flaw, return one plain-language correction and a source-cited corrective drill.",
+  "external_url": "https://ghost-form-coach.vercel.app",
+  "source_url": "https://github.com/Ranj04/Ghost/tree/main/src/lib/finchip/ghost-shot-coach",
+  "license": "MIT",
+  "standard": "ERC1155",
+  "category": "Sports",
+  "capability": "coachFlaw",
+  "input_schema": "./input.schema.json",
+  "output_schema": "./output.schema.json",
+  "attributes": [
+    {
+      "trait_type": "Grounding",
+      "value": "Cited sources"
+    },
+    {
+      "trait_type": "Sport",
+      "value": "Basketball"
+    },
+    {
+      "trait_type": "Access",
+      "value": "Free"
+    }
+  ]
+}

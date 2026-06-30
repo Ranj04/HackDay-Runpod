@@ -1,0 +1,16 @@
+{
+  "name": "Ghost Shot Coach",
+  "slug": "ghost-shot-coach_finchip",
+  "standard": "ERC1155",
+  "metadataURI": "https://raw.githubusercontent.com/Ranj04/Ghost/main/src/lib/finchip/ghost-shot-coach/metadata.json",
+  "contentHash": "0xde3ccfc23195abd2f3156b3ba9d86def794f1f62e86690c2307f846d3514b1a8",
+  "sourceUrl": "https://github.com/Ranj04/Ghost/tree/main/src/lib/finchip/ghost-shot-coach",
+  "category": "Sports",
+  "licenseType": "MIT",
+  "feeModel": 0,
+  "licensePrice": "0",
+  "maxSupply": 0,
+  "royaltyBPS": 250,
+  "imageURI": "",
+  "usageLimit": 0
+}

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ghost Shot Coach output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["flawId", "summary", "drill", "references"],
+  "properties": {
+    "flawId": { "type": "string" },
+    "summary": { "type": "string" },
+    "drill": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "steps",
+        "sourceUrl",
+        "sourceTitle"
+      ],
+      "properties": {
+        "title": { "type": "string" },
+        "steps": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "sourceUrl": { "type": "string", "format": "uri" },
+        "sourceTitle": { "type": "string" }
+      }
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "url"],
+        "properties": {
+          "title": { "type": "string" },
+          "url": { "type": "string", "format": "uri" }
+        }
+      }
+    }
+  }
+}

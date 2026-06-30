@@ -1,0 +1,197 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-heading: var(--font-heading);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+ * Ghost — "motion-capture at night". Dark blue-black site, warm-white text,
+ * electric-blue brand accent, vivid orange reserved for alerts/errors only.
+ * The whole site is dark by default; tokens mirror src/components/overlay/palette.ts.
+ */
+:root {
+  --font-heading: var(--font-saira), "Saira", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-hanken), "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, monospace;
+
+  /* Brand tokens (mirror the canvas palette) */
+  --ink: #080c14;
+  --surface: #101a2b;
+  --line: #1e2a3d;
+  --bone: #f4f1e8;
+  --blue: #2e86ff;
+  --blue-soft: #5aa0ff;
+  --orange: #ff6a1a;
+  --muted-ink: #8a94a8;
+
+  /* shadcn token mapping — dark by default */
+  --background: var(--ink);
+  --foreground: var(--bone);
+  --card: #0f1828;
+  --card-foreground: var(--bone);
+  --popover: #0f1828;
+  --popover-foreground: var(--bone);
+  --primary: var(--blue);
+  --primary-foreground: #04080f;
+  --secondary: #16202f;
+  --secondary-foreground: var(--bone);
+  --muted: #131c2b;
+  --muted-foreground: var(--muted-ink);
+  --accent: #13243e;
+  --accent-foreground: #cfe2ff;
+  --destructive: var(--orange);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--blue);
+  --chart-1: #2e86ff;
+  --chart-2: #5aa0ff;
+  --chart-3: #ff6a1a;
+  --chart-4: #7c879b;
+  --chart-5: #1e6fe0;
+  --radius: 0.625rem;
+  --sidebar: #0f1828;
+  --sidebar-foreground: var(--bone);
+  --sidebar-primary: var(--blue);
+  --sidebar-primary-foreground: #04080f;
+  --sidebar-accent: #13243e;
+  --sidebar-accent-foreground: #cfe2ff;
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--blue);
+}
+
+.dark {
+  --background: var(--ink);
+  --foreground: var(--bone);
+  --card: #0f1828;
+  --card-foreground: var(--bone);
+  --popover: #0f1828;
+  --popover-foreground: var(--bone);
+  --primary: var(--blue);
+  --primary-foreground: #04080f;
+  --secondary: #16202f;
+  --secondary-foreground: var(--bone);
+  --muted: #131c2b;
+  --muted-foreground: var(--muted-ink);
+  --accent: #13243e;
+  --accent-foreground: #cfe2ff;
+  --destructive: var(--orange);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--blue);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  h1, h2, h3, .font-heading {
+    font-family: var(--font-heading);
+  }
+}
+
+@layer utilities {
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.2em] text-[var(--blue-soft)];
+  }
+  /* Measured numbers render as an instrument readout. */
+  .data {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.hero-glow {
+  background:
+    radial-gradient(circle at 72% 38%, rgb(46 134 255 / 24%), transparent 27rem),
+    radial-gradient(circle at 18% 80%, rgb(255 106 26 / 10%), transparent 22rem),
+    linear-gradient(160deg, #080c14 30%, #0b1422);
+}
+
+.capture-grid {
+  background-image:
+    linear-gradient(rgb(46 134 255 / 8%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(46 134 255 / 8%) 1px, transparent 1px);
+  background-size: 38px 38px;
+}
+
+.score-ring {
+  background: conic-gradient(
+    var(--blue) var(--score),
+    rgb(255 255 255 / 8%) var(--score)
+  );
+}
+
+@keyframes hero-scan {
+  0%,
+  100% {
+    top: 14%;
+    opacity: 0.35;
+  }
+  50% {
+    top: 86%;
+    opacity: 0.9;
+  }
+}
+
+/* Respect reduced-motion: kill CSS animations + transitions (scan line, pulse
+   dots, spinners). The canvas overlay separately holds a static frame. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ghost Shot Coach input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "label",
+    "severity",
+    "metric",
+    "observed",
+    "reference",
+    "direction"
+  ],
+  "properties": {
+    "id": { "type": "string" },
+    "label": { "type": "string" },
+    "severity": { "enum": ["low", "med", "high"] },
+    "metric": { "type": "string" },
+    "observed": { "type": "number" },
+    "reference": { "type": "number" },
+    "direction": {
+      "enum": ["too_high", "too_low", "late", "early"]
+    }
+  }
+}
