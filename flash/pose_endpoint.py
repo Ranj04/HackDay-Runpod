@@ -19,7 +19,7 @@ Output (consumed by flash/scoring.py in Phase 2):
     }
 x/y are normalized to 0..1 (image-plane), matching Ghost's keypoint convention.
 """
-from runpod_flash import CudaVersion, Endpoint, GpuType
+from runpod_flash import CudaVersion, Endpoint, GpuType, NetworkVolume
 
 
 @Endpoint(
@@ -27,6 +27,11 @@ from runpod_flash import CudaVersion, Endpoint, GpuType
     gpu=GpuType.NVIDIA_GEFORCE_RTX_4090,
     workers=(0, 5),
     min_cuda_version=CudaVersion.V13_0,
+    # Phase 5: cache the RTMPose ONNX weights on a NetworkVolume so they download
+    # once, not on every cold start. rtmlib caches under ~/.cache/rtmlib, so point
+    # HOME at the mounted volume (/runpod-volume) to persist them across workers.
+    volume=NetworkVolume(name="ghost-rtmpose-cache", size=10),
+    env={"HOME": "/runpod-volume"},
     # onnxruntime-gpu's CUDA-13 wheel doesn't bundle CUDA libs and the worker base
     # image doesn't reliably provide libcudart.so.13 — ship the CUDA-13 runtime via
     # pip nvidia wheels and ctypes-preload them in the body (they're not on the
@@ -49,6 +54,7 @@ async def pose(clip: dict) -> dict:
     import ctypes
     import glob
     import os
+    import time
 
     import cv2
     import numpy as np
@@ -99,8 +105,11 @@ async def pose(clip: dict) -> dict:
     else:
         raise ValueError("clip requires 'clip_url' or 'clip_b64'")
 
-    # RTMPose on GPU (det + pose, COCO-17). Models download to cache on cold start.
+    # RTMPose on GPU (det + pose, COCO-17). Weights download to the NetworkVolume
+    # on the first cold start, then load from cache — model_load_ms shows the win.
+    _t0 = time.time()
     model = Body(mode="balanced", backend="onnxruntime", device="cuda")
+    _model_load_ms = (time.time() - _t0) * 1000.0
 
     cap = cv2.VideoCapture(path)
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
@@ -156,4 +165,7 @@ async def pose(clip: dict) -> dict:
         "keypoint_format": "coco17",
         "frames": frames,
         "debug_frame_b64": debug_png,
+        # Phase 5 cost-panel signals (GPU-side timing for this rep).
+        "gpu_ms": round((time.time() - _t0) * 1000.0, 1),
+        "model_load_ms": round(_model_load_ms, 1),
     }
