@@ -34,7 +34,7 @@ Your pipeline must emit exactly this:
 ---
 
 ## Phase 0 — Setup
-**HUMAN ACTION:** `flash login`; confirm push access to `main`. Install the Flash skill (`github.com/runpod/skills` SKILL.md). Place one clean reference rep's keypoints in `flash/reference/`.
+**HUMAN ACTION:** `flash login`; confirm push access to `main`. Run `npm install` (links committed skills from `skills/`). Place one clean reference rep's keypoints in `flash/reference/`.
 
 **Agent:** run the `hello-gpu` example to confirm a trivial `@Endpoint` round-trips to a real GPU.
 

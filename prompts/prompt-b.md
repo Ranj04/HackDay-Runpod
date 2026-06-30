@@ -29,7 +29,7 @@ Your RAG endpoint consumes `flaw_label` → returns a drill, optionally with `so
 ---
 
 ## Phase 0 — Setup
-**HUMAN ACTION:** confirm push access to `main`. Bring up the **Insforge** project (or creds) and confirm its auth/storage/pgvector are reachable. Get a **Bright Data API token** and export it. Install **three** skills/MCPs: `github.com/runpod/skills`, `github.com/brightdata/skills`, and the **Insforge** skill/MCP.
+**HUMAN ACTION:** confirm push access to `main`. Run `npm install` (links committed Runpod skills from `skills/`). Bring up the **Insforge** project (or creds) and confirm its auth/storage/pgvector are reachable. Get a **Bright Data API token** and export it. Install Bright Data + **Insforge** skills/MCPs (`github.com/brightdata/skills`, Insforge skill/MCP).
 
 **verify:** Bright Data auth works (a trivial `client.discover` returns results); Insforge reachable (can read schema + the existing pgvector table); the cleanup seam imports.
 

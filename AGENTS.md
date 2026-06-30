@@ -8,7 +8,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 This project uses RunPod Flash to run GPU/CPU serverless endpoints. Flash is **required** for the project to be eligible for prizes — any compute-heavy workload (inference, embedding, analysis) must run as a Flash endpoint.
 
-- **Skill:** a `runpod/skills` skill is installed. Use it before implementing any Flash endpoint instead of guessing the API.
+- **Skill:** Runpod skills are committed under `skills/` (`flash`, `runpodctl`, `companion-clis`). After clone, `npm install` links them for agents at `.agents/skills`. Read `skills/flash/SKILL.md` before implementing any Flash endpoint instead of guessing the API.
 - **Reference:** see `runpod.md` in the project root for full technical details, GPU types, and constraints.
 - **Credentials:** `RUNPOD_API_KEY` in `.env.local`. Never hardcode.
 

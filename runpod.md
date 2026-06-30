@@ -96,7 +96,8 @@ Not a build tool — the platform for login, feedback, and **project submission*
 ```bash
 pip install runpod-flash          # or: uv tool install runpod-flash
 flash login                        # opens browser, authorizes once
-npx skills add runpod/skills       # installs Flash skill for Claude Code/Cursor/Cline
+# skills/ is committed in-repo; npm install links .agents/skills for agents
+# to refresh from upstream: npx skills update
 ```
 - Requires a **RunPod account with verified email + balance loaded**
 - Requires **Python 3.10, 3.11, 3.12, or 3.13**
@@ -186,7 +187,7 @@ Event-specific override from the "Know Before You Go" doc: **live product/termin
 - [ ] RunPod account created, email verified, **balance loaded**
 - [ ] `pip install runpod-flash` done
 - [ ] `flash login` authenticated
-- [ ] `npx skills add runpod/skills` installed
+- [ ] `skills/` committed and `npm install` run (links `.agents/skills`)
 - [ ] Python 3.10–3.13 confirmed locally
 - [ ] Bright Data account + API key ready (if using)
 - [ ] HackerSquad event page login working
