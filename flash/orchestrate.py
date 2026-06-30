@@ -51,17 +51,57 @@ async def rank(clips: list[dict], pose_call, reference: dict | None = None) -> d
     reps = []
     for clip, out in zip(clips, outputs):
         if isinstance(out, Exception) or not isinstance(out, dict) or "frames" not in out:
-            reps.append({"rep_id": clip.get("rep_id"), "score": 0.0, "flaw_label": "error"})
+            reps.append({"rep_id": clip.get("rep_id"), "score": 0.0,
+                         "flaw_label": "error", "keypoints_uri": clip.get("keypoints_uri")})
             continue
         res = score_rep(out, ref)
         reps.append({
             "rep_id": clip.get("rep_id"),
             "score": float(res["score"]),
             "flaw_label": res["flaw_label"],
+            "keypoints_uri": clip.get("keypoints_uri"),  # optional; B persists/sets it
         })
 
     reps.sort(key=lambda r: r["score"])  # ascending — worst first
     return {"reps": reps, "worst": [r["rep_id"] for r in reps]}
+
+
+# --- Mock RAG (Phase 4): stub B's drill lookup so the pipeline runs alone -----
+# B's RAG endpoint consumes flaw_label and returns a cited corrective drill; until
+# integration we fake one per flaw so the full pipeline produces coaching offline.
+_MOCK_DRILLS = {
+    "elbow_flare": "Wall form-shooting for elbow alignment",
+    "shallow_dip": "Dip-and-rise for leg-driven power",
+    "wrist_snap": "Follow-through hold for wrist snap",
+    "guide_hand": "One-hand form shooting (guide hand off)",
+    "low_release": "Raise the set point",
+}
+_DRILL_SOURCE = "https://www.breakthroughbasketball.com/fundamentals/shooting.html"
+
+
+def mock_drill(flaw_label: str) -> dict | None:
+    """Stand-in for B's RAG drill lookup. None when there's nothing to coach."""
+    if flaw_label in ("none", "error"):
+        return None
+    return {
+        "flaw_label": flaw_label,
+        "title": _MOCK_DRILLS.get(flaw_label, "Form-shooting reset"),
+        "source_url": _DRILL_SOURCE,
+        "mock": True,  # replaced by B's real RAG endpoint at integration
+    }
+
+
+def attach_drills(report: dict, k: int | None = None) -> dict:
+    """Attach a mocked drill to the worst k reps that have a real flaw (k=None: all)."""
+    worst_ids = report["worst"][:k] if k else report["worst"]
+    by_id = {r["rep_id"]: r for r in report["reps"]}
+    for rid in worst_ids:
+        rep = by_id.get(rid)
+        if rep:
+            drill = mock_drill(rep["flaw_label"])
+            if drill:
+                rep["drill"] = drill
+    return report
 
 
 async def native_pose_call(clip: dict) -> dict:
@@ -91,4 +131,5 @@ if __name__ == "__main__":
         for i in range(n)
     ]
     report = asyncio.run(rank(clips, http_pose_call_factory(base)))
+    attach_drills(report)  # mock B's RAG so the pipeline is coaching-complete alone
     print(json.dumps(report, indent=2))
