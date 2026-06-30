@@ -131,15 +131,52 @@ export function drawEchoLines(ctx: CanvasRenderingContext2D, frame: PoseFrame, w
   const map = pxMap(frame, w, h);
   const T = torsoScale(map, w, h);
   ctx.save();
-  // Faint, thin, headless echo — a reference, not a competing figure.
+  // Faint, thin echo — a reference, not a competing figure. It mirrors the "you"
+  // figure's anatomy (bones + joint nodes + a head ring) so it reads as a
+  // complete silhouette, just quieter (lower alpha, smaller nodes/head).
   ctx.globalAlpha = 0.32 * alpha;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.strokeStyle = ECHO;
   ctx.shadowColor = ECHO;
   ctx.shadowBlur = 6;
-  ctx.lineWidth = Math.max(1.5, Math.min(3, T * 0.03));
+  const lw = Math.max(1.5, Math.min(3, T * 0.03));
+  ctx.lineWidth = lw;
   strokeSkeleton(ctx, map, undefined, undefined, ECHO);
+
+  // Joint nodes + head ring — slightly smaller than the player's so the echo
+  // stays subordinate, but no longer headless/broken-looking. Nodes are drawn as
+  // glowing mocap markers (soft blue halo + a brighter core) so the reference
+  // reads as luminous points of light rather than flat dots.
+  const nodeR = Math.max(2, T * 0.024);
+  for (const name of JOINT_NAMES) {
+    const k = map.get(name);
+    if (!k) continue;
+    ctx.shadowColor = ECHO;
+    ctx.shadowBlur = 7;
+    ctx.fillStyle = ECHO;
+    ctx.beginPath();
+    ctx.arc(k.x, k.y, nodeR, 0, Math.PI * 2);
+    ctx.fill();
+    // Crisp brighter core (no glow) so each marker has a defined center.
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = BONE;
+    ctx.globalAlpha = 0.5 * alpha;
+    ctx.beginPath();
+    ctx.arc(k.x, k.y, nodeR * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.32 * alpha;
+  }
+  const nose = map.get("nose");
+  if (nose) {
+    ctx.strokeStyle = ECHO;
+    ctx.shadowColor = ECHO;
+    ctx.shadowBlur = 6;
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.arc(nose.x, nose.y, Math.max(7, T * 0.15), 0, Math.PI * 2);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
