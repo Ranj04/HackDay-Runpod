@@ -4,6 +4,22 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+## RunPod Flash
+
+This project uses RunPod Flash to run GPU/CPU serverless endpoints. Flash is **required** for the project to be eligible for prizes — any compute-heavy workload (inference, embedding, analysis) must run as a Flash endpoint.
+
+- **Skill:** a `runpod/skills` skill is installed. Use it before implementing any Flash endpoint instead of guessing the API.
+- **Reference:** see `runpod.md` in the project root for full technical details, GPU types, and constraints.
+- **Credentials:** `RUNPOD_API_KEY` in `.env.local`. Never hardcode.
+
+Key patterns:
+
+- Decorate a Python function with `@Endpoint(gpu=GpuType.NVIDIA_GEFORCE_RTX_4090, dependencies=["torch"])` to make it a serverless endpoint.
+- Parameters must be JSON-serializable — no pickle, no raw tensors across the boundary.
+- Declare all pip dependencies in the decorator; declare apt packages via `system_dependencies=`.
+- Cache large model weights to a `NetworkVolume` — do not bundle them in the deployment (500 MB limit).
+- Use `flash dev` locally to test; `flash deploy` for production.
+
 <!-- INSFORGE:START -->
 ## InsForge backend
 
