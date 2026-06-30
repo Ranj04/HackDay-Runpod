@@ -56,3 +56,7 @@ next-env.d.ts
 .trae
 .windsurf
 .flash/
+
+# Python
+__pycache__/
+*.pyc
