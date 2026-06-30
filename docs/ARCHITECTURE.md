@@ -34,10 +34,9 @@ flowchart TD
     flaw -. score .-> pvp[Kite PvP - settle testnet stake to winner]
     pvp -. result .-> persist
 
-    %% Infra / submission rails
+    %% Infra
     host[Vercel - frontend host] -.-> results
     refbuild[Nebius GPU - offline reference-builder, stretch] -.-> align
-    finchip[FinChip - package coaching skill for submission] -.-> persist
 ```
 
 The spine is fully client-side through flaw detection. Only the coaching step
@@ -73,25 +72,7 @@ A capture's life, end to end:
 The contract types are the only shapes that cross the A/B boundary, so either
 half can be rebuilt independently as long as it honors `contracts.ts`.
 
-## 4. Sponsor integrations
-
-| Tool | Layer | What it does here | Why the product is worse without it |
-|------|-------|-------------------|-------------------------------------|
-| **You.com** | Product | Retrieves the flaw-specific corrective drill for the detected `topFlaw` — with a real citation, not generic tips. | Without it, feedback stops at "your elbow flares" with no fix. The drill is the actionable half of coaching; You.com turns a diagnosis into something you can go practice. |
-| **Tavily** | Product | Searches and returns the supporting technique/biomechanics sources behind each drill for the references list. | Without it, drills are unsourced assertions a user has no reason to trust. Citations are the credibility layer — they let a skeptical player verify the advice isn't hallucinated. |
-| **Nebius** | Product | Token Factory (OpenAI-compatible) inference writes the personalized coaching note from the retrieved sources + the user's real metrics. Optional stretch: serverless GPU offline reference-builder. | Without it, we'd show raw search results or a hand-templated note. Nebius makes the coaching read like a coach talking while staying grounded in retrieved facts. |
-| **InsForge** | Infra | Auth + persistence: user accounts, stored sessions, and cross-session progress. | Without it, every shot is a throwaway. No accounts, no history, no progress arc — Ghost becomes a one-off toy instead of something you return to and improve with. |
-| **Kite** | Product | Settles the player-vs-player "form battle" — the higher score wins a small testnet stake on-chain (Agent Passport + x402, faucet tokens). | Without it, PvP is just a scoreboard with no stakes. Kite makes the battle have consequence, which is the entire point of betting on your form. |
-| **FinChip** | Submission | Packages the `coachFlaw` capability ("given a form flaw, return a cited corrective drill") as an ownable/tradeable skill asset for submission. | Without it, the submission is just an app link; FinChip frames the coaching as a reusable, ownable asset, which is the angle that submission track rewards. |
-| **Trae / Replit** | Dev | AI IDE / build environment used to build Ghost as a two-person parallel build against frozen contracts ("built with"). | Without it, the parallel split-build is slower and the contract discipline is harder to hold; it's the velocity multiplier that made a one-day two-person build feasible. |
-| **Growing Pines** | Submission | Overall-prize eligibility — nothing to integrate; it's the track the finished submission competes in. | Without it, the project isn't eligible for the overall prize; the requirement is simply that the submission be complete and strong, which the rest of this doc serves. |
-
-Layers are honest: You.com, Tavily, Nebius, InsForge, and Kite touch the product
-surface a user feels; Vercel hosts and the Nebius GPU builder is infra; Trae/
-Replit are dev process; FinChip and Growing Pines are submission. We're not
-pretending a host or a prize track is a product feature.
-
-## 5. Key design decisions & tradeoffs
+## 4. Key design decisions & tradeoffs
 
 - **Off-the-shelf pose model, not a trained one.** We use MediaPipe's Pose
   Landmarker as-is. There's no labeled jump-shot dataset we could collect and
@@ -120,7 +101,7 @@ pretending a host or a prize track is a product feature.
   calls are networked, and they're cached. A demo that doesn't depend on the
   venue's network is a demo that doesn't die on stage.
 
-## 6. What we deliberately cut
+## 5. What we deliberately cut
 
 - **Real-time multiplayer beyond the single PvP stake.** One async form battle,
   settled once. No lobbies, no live head-to-head.

@@ -77,6 +77,3 @@ And the PvP stakes settle on a **testnet** with faucet tokens. It's a skill-base
 
 None of that is the product apologizing for itself. It's the part we were careful about, and the part we'd defend.
 
----
-
-Built at Wizard Hackathon. If you want to talk shop about pose estimation, retrieval-grounded coaching, or why your free throw keeps drifting left, we're around.
