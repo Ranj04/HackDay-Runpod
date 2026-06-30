@@ -139,7 +139,7 @@ function Drill({ coaching }: { coaching: NonNullable<CoachedRep["coaching"]> }) 
               href={s.url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary transition hover:bg-primary/20"
+              className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-link transition hover:bg-primary/20"
             >
               {s.title.length > 48 ? s.title.slice(0, 48) + "…" : s.title}
               <ArrowUpRight className="size-3" />

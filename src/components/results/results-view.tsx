@@ -71,7 +71,7 @@ export function ResultsView({
                 </div>
               </div>
             </div>
-            <div className="mt-6 flex items-center gap-2 text-sm text-primary">
+            <div className="mt-6 flex items-center gap-2 text-sm text-link">
               <Sparkles className="size-4" />
               Solid base. One clear focus.
             </div>

@@ -43,6 +43,7 @@
   /* Semantic role aliases + brand accent + states (added — see token map below) */
   --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
+  --color-link: var(--link);
   --color-accent-brand: var(--accent-brand);
   --color-accent-brand-foreground: var(--accent-brand-foreground);
   --color-accent-brand-strong: var(--accent-brand-strong);
@@ -128,7 +129,7 @@
   --muted-foreground: #54616e;
   --accent: var(--blue-100);
   --accent-foreground: var(--blue-700);
-  --destructive: #d7263d;
+  --destructive: #c20e2e;
   --border: #dce2e9;
   --input: #cbd4dd;
   --ring: var(--blue-500);
@@ -153,13 +154,16 @@
   --text-primary: var(--foreground);
   --text-muted: var(--muted-foreground);
   --focus: var(--ring);
+  --link: var(--blue-600);
   --accent-brand: var(--orange-500);
   --accent-brand-foreground: var(--n-900);
-  --accent-brand-strong: var(--orange-600);
+  /* Darker than orange-600 so it stays AA as small severity TEXT on light
+     surfaces/tints (orange is only "text-safe at large" at orange-600). */
+  --accent-brand-strong: #ae3a0b;
   --accent-brand-tint: var(--orange-100);
-  --success: #1e9e6a;
+  --success: #0e6b45;
   --success-foreground: #ffffff;
-  --warning: #e0a500;
+  --warning: #7a5e00;
   --warning-foreground: var(--n-900);
   --info: var(--blue-500);
   --info-foreground: #ffffff;
@@ -210,11 +214,14 @@
   --text-primary: var(--foreground);
   --text-muted: var(--muted-foreground);
   --focus: var(--ring);
+  --link: var(--blue-soft);
   --accent-brand: var(--orange-500);
   --accent-brand-foreground: var(--n-900);
   --accent-brand-strong: var(--orange-400);
   --accent-brand-tint: #2a1b10;
-  --success: #1e9e6a;
+  /* Brighter than light's #0e6b45 so it stays AA as TEXT on dark surfaces +
+     its own green tint (the "Best" badge). */
+  --success: #34d399;
   --success-foreground: #04140d;
   --warning: #e0a500;
   --warning-foreground: #1a1400;
@@ -241,7 +248,7 @@
 
 @layer utilities {
   .eyebrow {
-    @apply text-xs font-semibold uppercase tracking-[0.2em] text-[var(--blue-soft)];
+    @apply text-xs font-semibold uppercase tracking-[0.2em] text-[var(--link)];
   }
   /* Measured numbers render as an instrument readout. */
   .data {
