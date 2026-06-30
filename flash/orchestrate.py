@@ -68,12 +68,15 @@ async def rank(clips: list[dict], pose_call, reference: dict | None = None) -> d
             continue
         gpu_ms_total += float(out.get("gpu_ms", 0.0))
         res = score_rep(out, ref)
-        reps.append({
+        rep = {
             "rep_id": clip.get("rep_id"),
             "score": float(res["score"]),
             "flaw_label": res["flaw_label"],
             "keypoints_uri": clip.get("keypoints_uri"),  # optional; B persists/sets it
-        })
+        }
+        if "dimensions" in res:  # additive VIZ field; surfaced for B's radar
+            rep["dimensions"] = res["dimensions"]
+        reps.append(rep)
     cpu_ms = (time.time() - cpu_t0) * 1000.0
 
     reps.sort(key=lambda r: r["score"])  # ascending — worst first

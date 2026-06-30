@@ -207,6 +207,36 @@ def detect_flaws(metrics: Metrics, reference: Metrics):
     return {"top_flaw": cands[0]["flaw"], "all_flaws": all_flaws, "top_ratio": cands[0]["ratio"]}
 
 
+# Maps the scorer's metric keys onto the 4 SHARED CONTRACT radar axes. Only these
+# four surface as `dimensions`; guideHandPresence has no contract axis.
+_DIMENSION_AXES = {
+    "releaseElbowAngle": "release_angle",
+    "releaseHeight": "arc",
+    "kneeFlexionAtDip": "knee_bend",
+    "wristSnapTiming": "follow_through",
+}
+
+
+def dimension_scores(metrics: Metrics, reference: Metrics) -> Optional[dict]:
+    """Per-axis 0-100 sub-scores (100 = matches reference) for the radar.
+
+    Pure surfacing of the same per-metric deviation `_evaluate`/`score_form`
+    already compute — sub-score = 100·(1 − min(1, ratio/MAX_BANDS)) — so it never
+    feeds back into `score` or `flaw_label`. Returns None unless all four axes are
+    derivable (the contract field is optional and the radar degrades gracefully).
+    """
+    axes: dict = {}
+    for spec in _METRIC_SPECS:
+        axis = _DIMENSION_AXES.get(spec[0])
+        if axis is None:
+            continue
+        c = _evaluate(spec, metrics, reference)
+        if c is None:
+            continue
+        axes[axis] = round(100 * (1 - min(1.0, c["ratio"] / _MAX_BANDS)))
+    return axes if len(axes) == len(_DIMENSION_AXES) else None
+
+
 def score_form(metrics: Metrics, reference: Metrics) -> int:
     """0-100. penalty = weight·min(1, ratio/MAX_BANDS); score = 100·(1 − Σpen/Σw)."""
     cands = [c for c in (_evaluate(s, metrics, reference) for s in _METRIC_SPECS) if c]
@@ -232,7 +262,11 @@ def score_rep(pose_output: dict, reference: Optional[Metrics] = None) -> dict:
     score = score_form(metrics, ref)
     flaws = detect_flaws(metrics, ref)
     label = flaws["top_flaw"]["id"] if flaws.get("top_ratio", 0) > 1 else "none"
-    return {"score": score, "flaw_label": label}
+    result = {"score": score, "flaw_label": label}
+    dims = dimension_scores(metrics, ref)  # additive; only when all 4 axes derive
+    if dims is not None:
+        result["dimensions"] = dims
+    return result
 
 
 # ---- local verify (Phase 2): no GPU, pure CPU math ------------------------
@@ -248,6 +282,14 @@ if __name__ == "__main__":
     good = score_rep({"frames": ref_frames}, ref)
     print("REFERENCE rep ->", good, "(expect high score, flaw_label 'none')")
 
+    # Phase 1 (viz): dimensions are surfaced, sane, and don't perturb the score.
+    dims = good.get("dimensions")
+    print("REFERENCE dimensions ->", dims, "(expect all four axes ~100)")
+    assert dims is not None, "reference rep should expose dimensions"
+    assert set(dims) == {"release_angle", "arc", "knee_bend", "follow_through"}, dims
+    assert all(0 <= v <= 100 for v in dims.values()), f"dimensions out of 0-100: {dims}"
+    assert all(v == 100 for v in dims.values()), f"reference matches itself: {dims}"
+
     # Deliberately bad rep: flare the elbow well past its band + shallow the dip.
     bad_metrics = copy.deepcopy(ref)
     if bad_metrics["releaseElbowAngle"] is not None:
@@ -256,7 +298,15 @@ if __name__ == "__main__":
         bad_metrics["kneeFlexionAtDip"] += 30    # too straight = shallow dip
     bad_score = score_form(bad_metrics, ref)
     bad_flaw = detect_flaws(bad_metrics, ref)["top_flaw"]["id"]
-    print("BAD rep -> {'score':", bad_score, ", 'flaw_label':", repr(bad_flaw), "} (expect low + 'elbow_flare')")
+    bad_dims = dimension_scores(bad_metrics, ref)
+    print("BAD rep -> {'score':", bad_score, ", 'flaw_label':", repr(bad_flaw),
+          ", 'dimensions':", bad_dims, "} (expect low + 'elbow_flare')")
+
+    # The flared elbow + shallow dip should drag exactly their two axes down,
+    # leaving the untouched axes at 100 — proof the radar discriminates per-axis.
+    assert bad_dims["release_angle"] < 50, bad_dims
+    assert bad_dims["knee_bend"] < bad_dims["arc"], bad_dims
+    assert bad_dims["arc"] == 100 and bad_dims["follow_through"] == 100, bad_dims
 
     assert good["score"] >= 90, f"reference should score high, got {good['score']}"
     assert good["flaw_label"] == "none", f"reference flaw_label should be none, got {good['flaw_label']}"

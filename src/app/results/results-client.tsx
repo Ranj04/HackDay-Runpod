@@ -115,7 +115,7 @@ export function ResultsClient() {
 
   if (state.phase === "loading") {
     return (
-      <div className="grid min-h-[31rem] place-items-center rounded-[2rem] border border-white/10 bg-[#080c14] text-white/70">
+      <div className="grid min-h-[31rem] place-items-center rounded-[2rem] border border-border bg-card text-muted-foreground">
         <p className="flex items-center gap-2 text-sm">
           <LoaderCircle className="size-5 animate-spin" /> Analyzing your shot…
         </p>
@@ -125,7 +125,7 @@ export function ResultsClient() {
 
   if (state.phase === "error") {
     return (
-      <div className="space-y-4 rounded-[2rem] border border-white/10 bg-[#080c14] p-8 text-white/80">
+      <div className="space-y-4 rounded-[2rem] border border-border bg-card p-8 text-muted-foreground">
         <p className="text-sm text-destructive">{state.message}</p>
         <Link
           className="text-sm underline hover:text-foreground"

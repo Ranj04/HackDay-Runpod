@@ -29,7 +29,7 @@ export function CaptureStage() {
   // While routing, unmount the camera so it can't auto-start another countdown.
   if (navigating) {
     return (
-      <div className="grid min-h-[31rem] place-items-center rounded-[2rem] border border-white/10 bg-[#080c14] text-white/70">
+      <div className="grid min-h-[31rem] place-items-center rounded-[2rem] border border-border bg-card text-muted-foreground">
         <p className="flex items-center gap-2 text-sm">
           <LoaderCircle className="size-5 animate-spin" /> Analyzing your shot…
         </p>
