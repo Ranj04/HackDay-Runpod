@@ -1,4 +1,4 @@
-"""Bright Data -> embeddings -> InsForge pgvector ingestion worker.
+"""Bright Data -> embeddings -> Supabase pgvector ingestion worker.
 
 RunPod Flash executes this as a CPU serverless endpoint. The request is a
 JSON-serializable object:
@@ -36,8 +36,8 @@ def _worker_environment() -> dict[str, str]:
     names = (
         "BRIGHTDATA_API_TOKEN",
         "OPENROUTER_API_KEY",
-        "INSFORGE_API_KEY",
-        "INSFORGE_API_BASE_URL",
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
     )
     return {name: os.environ.get(name, "") for name in names}
 
@@ -74,8 +74,8 @@ async def ingest_coaching(payload: dict | None = None) -> dict:
     required = (
         "BRIGHTDATA_API_TOKEN",
         "OPENROUTER_API_KEY",
-        "INSFORGE_API_KEY",
-        "INSFORGE_API_BASE_URL",
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
     )
     missing = [name for name in required if not os.environ.get(name)]
     if missing:
@@ -194,12 +194,14 @@ async def ingest_coaching(payload: dict | None = None) -> dict:
         api_key=os.environ["OPENROUTER_API_KEY"],
         base_url="https://openrouter.ai/api/v1",
     )
+    supabase_key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
     database_url = (
-        os.environ["INSFORGE_API_BASE_URL"].rstrip("/")
-        + "/api/database/records/coaching_documents"
+        os.environ["SUPABASE_URL"].rstrip("/")
+        + "/rest/v1/coaching_documents"
     )
     database_headers = {
-        "Authorization": f"Bearer {os.environ['INSFORGE_API_KEY']}",
+        "apikey": supabase_key,
+        "Authorization": f"Bearer {supabase_key}",
         "Content-Type": "application/json",
         "Prefer": "resolution=merge-duplicates,return=minimal",
     }
@@ -297,9 +299,8 @@ async def ingest_coaching(payload: dict | None = None) -> dict:
                         }
                     )
 
-                # InsForge's PostgREST process has a deliberately small heap.
-                # A single JSON array containing several 1,536-float vectors can
-                # exhaust it, so keep every upsert request bounded to one row.
+                # PostgREST can choke on one JSON array holding several
+                # 1,536-float vectors, so keep every upsert request bounded to one row.
                 for row in rows:
                     response = await database.post(
                         database_url,

@@ -8,7 +8,7 @@ Set ``force_live`` to verify the Bright Data fallback:
 
     {"request": {"flaw_label": "elbow_flare", "force_live": true}}
 
-Response source URLs always come from InsForge pgvector or a live Bright Data
+Response source URLs always come from Supabase pgvector or a live Bright Data
 Discover result; the language model never invents citations.
 """
 
@@ -21,8 +21,8 @@ def _worker_environment() -> dict[str, str]:
     names = (
         "BRIGHTDATA_API_TOKEN",
         "OPENROUTER_API_KEY",
-        "INSFORGE_API_KEY",
-        "INSFORGE_API_BASE_URL",
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
     )
     return {name: os.environ.get(name, "") for name in names}
 
@@ -60,8 +60,8 @@ async def cited_drill(request: dict) -> dict:
     required = (
         "BRIGHTDATA_API_TOKEN",
         "OPENROUTER_API_KEY",
-        "INSFORGE_API_KEY",
-        "INSFORGE_API_BASE_URL",
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
     )
     missing = [name for name in required if not os.environ.get(name)]
     if missing:
@@ -156,9 +156,11 @@ async def cited_drill(request: dict) -> dict:
     )
     query_embedding = embedding_response.data[0].embedding
 
-    database_base = os.environ["INSFORGE_API_BASE_URL"].rstrip("/")
+    supabase_key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+    database_base = os.environ["SUPABASE_URL"].rstrip("/")
     database_headers = {
-        "Authorization": f"Bearer {os.environ['INSFORGE_API_KEY']}",
+        "apikey": supabase_key,
+        "Authorization": f"Bearer {supabase_key}",
         "Content-Type": "application/json",
     }
     rows: list[dict] = []
@@ -167,7 +169,7 @@ async def cited_drill(request: dict) -> dict:
     if not force_live:
         async with httpx.AsyncClient(timeout=90) as database:
             response = await database.post(
-                database_base + "/api/database/rpc/match_coaching_documents",
+                database_base + "/rest/v1/rpc/match_coaching_documents",
                 headers=database_headers,
                 json={
                     "query_embedding": query_embedding,
