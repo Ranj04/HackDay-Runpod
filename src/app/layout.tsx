@@ -50,7 +50,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/report"
-                  className="rounded-full px-3 py-2 text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
+                  className="rounded-full px-3 py-2 text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground"
                 >
                   Report
                 </Link>
