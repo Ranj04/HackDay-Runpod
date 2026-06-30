@@ -39,6 +39,23 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+
+  /* Semantic role aliases + brand accent + states (added — see token map below) */
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-accent-brand: var(--accent-brand);
+  --color-accent-brand-foreground: var(--accent-brand-foreground);
+  --color-accent-brand-strong: var(--accent-brand-strong);
+  --color-accent-brand-tint: var(--accent-brand-tint);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-error: var(--error);
+  --color-error-foreground: var(--error-foreground);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -49,18 +66,30 @@
 }
 
 /*
- * Ghost — "motion-capture at night". Dark blue-black site, warm-white text,
- * electric-blue brand accent, vivid orange reserved for alerts/errors only.
- * The whole site is dark by default; tokens mirror src/components/overlay/palette.ts.
+ * Ghost — blue + orange, complementary (60-30-10).
+ *   ~60% blue/navy + neutral surfaces · ~30% secondary structure · ~10% ORANGE accent only.
+ *   blue = data / precision / trust   ·   orange = energy / action / basketball.
+ *
+ * Token layers, single source of truth:
+ *   1. Brand primitives (--ink…--orange): theme-independent values the dark <canvas>
+ *      chrome (GhostOverlay / HeroShowcase) and CSS utilities read directly. Kept stable.
+ *   2. Primitive scales (--blue-*, --orange-*, --n-*): raw palette, verify-contrasted.
+ *   3. shadcn semantic tokens (--background…--ring): repointed; drive every component.
+ *   4. Semantic roles + states: surface / text / accent-brand / success / warning / info / error.
+ *
+ * Orange-vs-error rule: orange is the BRAND ACCENT + worst-rep severity only.
+ *   True errors use a distinct red (--error / --destructive) — never orange. Always pair
+ *   state color with an icon + text label; never color alone.
+ *
+ * Contrast: WCAG AA. Body/UI text ≥ 4.5:1, large text/icons ≥ 3:1 — verified both modes.
  */
 :root {
   --font-heading: var(--font-saira), "Saira", ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-hanken), "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, monospace;
 
-  /* Brand tokens (mirror the canvas palette) */
+  /* 1. Brand primitives — theme-independent (dark canvas chrome + utilities read these) */
   --ink: #080c14;
-  --surface: #101a2b;
   --line: #1e2a3d;
   --bone: #f4f1e8;
   --blue: #2e86ff;
@@ -68,60 +97,128 @@
   --orange: #ff6a1a;
   --muted-ink: #8a94a8;
 
-  /* shadcn token mapping — dark by default */
-  --background: var(--ink);
-  --foreground: var(--bone);
-  --card: #0f1828;
-  --card-foreground: var(--bone);
-  --popover: #0f1828;
-  --popover-foreground: var(--bone);
-  --primary: var(--blue);
-  --primary-foreground: #04080f;
-  --secondary: #16202f;
-  --secondary-foreground: var(--bone);
-  --muted: #131c2b;
-  --muted-foreground: var(--muted-ink);
-  --accent: #13243e;
-  --accent-foreground: #cfe2ff;
-  --destructive: var(--orange);
-  --border: var(--line);
-  --input: var(--line);
-  --ring: var(--blue);
-  --chart-1: #2e86ff;
-  --chart-2: #5aa0ff;
-  --chart-3: #ff6a1a;
-  --chart-4: #7c879b;
-  --chart-5: #1e6fe0;
+  /* 2. Primitive palette scales */
+  --blue-900: #0b1b2b;
+  --blue-700: #103a5a;
+  --blue-600: #155e9c;
+  --blue-500: #1e7fd0;
+  --blue-100: #dcebf7;
+  --orange-600: #e8590c;
+  --orange-500: #f97316;
+  --orange-400: #fb8b3c;
+  --orange-100: #ffe8d6;
+  --n-0: #ffffff;
+  --n-50: #f6f8fa;
+  --n-100: #ebeef2;
+  --n-500: #5b6b7b;
+  --n-900: #0e141a;
+
+  /* 3. shadcn semantic tokens — LIGHT */
+  --background: var(--n-50);
+  --foreground: var(--n-900);
+  --card: var(--n-0);
+  --card-foreground: var(--n-900);
+  --popover: var(--n-0);
+  --popover-foreground: var(--n-900);
+  --primary: var(--blue-600);
+  --primary-foreground: #ffffff;
+  --secondary: var(--n-100);
+  --secondary-foreground: var(--blue-900);
+  --muted: var(--n-100);
+  --muted-foreground: #54616e;
+  --accent: var(--blue-100);
+  --accent-foreground: var(--blue-700);
+  --destructive: #d7263d;
+  --border: #dce2e9;
+  --input: #cbd4dd;
+  --ring: var(--blue-500);
+  --chart-1: var(--blue-600);
+  --chart-2: var(--blue-500);
+  --chart-3: var(--orange-500);
+  --chart-4: var(--n-500);
+  --chart-5: var(--blue-700);
   --radius: 0.625rem;
-  --sidebar: #0f1828;
-  --sidebar-foreground: var(--bone);
-  --sidebar-primary: var(--blue);
-  --sidebar-primary-foreground: #04080f;
-  --sidebar-accent: #13243e;
-  --sidebar-accent-foreground: #cfe2ff;
-  --sidebar-border: var(--line);
-  --sidebar-ring: var(--blue);
+  --sidebar: var(--n-0);
+  --sidebar-foreground: var(--n-900);
+  --sidebar-primary: var(--blue-600);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--blue-100);
+  --sidebar-accent-foreground: var(--blue-700);
+  --sidebar-border: #dce2e9;
+  --sidebar-ring: var(--blue-500);
+
+  /* 4. Semantic roles + states — LIGHT */
+  --surface: var(--card);
+  --surface-muted: var(--muted);
+  --text-primary: var(--foreground);
+  --text-muted: var(--muted-foreground);
+  --focus: var(--ring);
+  --accent-brand: var(--orange-500);
+  --accent-brand-foreground: var(--n-900);
+  --accent-brand-strong: var(--orange-600);
+  --accent-brand-tint: var(--orange-100);
+  --success: #1e9e6a;
+  --success-foreground: #ffffff;
+  --warning: #e0a500;
+  --warning-foreground: var(--n-900);
+  --info: var(--blue-500);
+  --info-foreground: #ffffff;
+  --error: var(--destructive);
+  --error-foreground: #ffffff;
 }
 
 .dark {
-  --background: var(--ink);
-  --foreground: var(--bone);
-  --card: #0f1828;
-  --card-foreground: var(--bone);
-  --popover: #0f1828;
-  --popover-foreground: var(--bone);
+  /* 3. shadcn semantic tokens — DARK */
+  --background: var(--blue-900);
+  --foreground: #eaf1f8;
+  --card: #102536;
+  --card-foreground: #eaf1f8;
+  --popover: #102536;
+  --popover-foreground: #eaf1f8;
   --primary: var(--blue);
   --primary-foreground: #04080f;
-  --secondary: #16202f;
-  --secondary-foreground: var(--bone);
-  --muted: #131c2b;
-  --muted-foreground: var(--muted-ink);
-  --accent: #13243e;
-  --accent-foreground: #cfe2ff;
-  --destructive: var(--orange);
-  --border: var(--line);
-  --input: var(--line);
+  --secondary: #16263a;
+  --secondary-foreground: #eaf1f8;
+  --muted: #14283d;
+  --muted-foreground: #9db1c5;
+  --accent: #16324f;
+  --accent-foreground: var(--blue-100);
+  --destructive: #d7263d;
+  --border: #21384f;
+  --input: #21384f;
   --ring: var(--blue);
+  --chart-1: var(--blue);
+  --chart-2: var(--blue-soft);
+  --chart-3: var(--orange-500);
+  --chart-4: #7c879b;
+  --chart-5: #1e6fe0;
+  --sidebar: #102536;
+  --sidebar-foreground: #eaf1f8;
+  --sidebar-primary: var(--blue);
+  --sidebar-primary-foreground: #04080f;
+  --sidebar-accent: #16324f;
+  --sidebar-accent-foreground: var(--blue-100);
+  --sidebar-border: #21384f;
+  --sidebar-ring: var(--blue);
+
+  /* 4. Semantic roles + states — DARK */
+  --surface: var(--card);
+  --surface-muted: var(--muted);
+  --text-primary: var(--foreground);
+  --text-muted: var(--muted-foreground);
+  --focus: var(--ring);
+  --accent-brand: var(--orange-500);
+  --accent-brand-foreground: var(--n-900);
+  --accent-brand-strong: var(--orange-400);
+  --accent-brand-tint: #2a1b10;
+  --success: #1e9e6a;
+  --success-foreground: #04140d;
+  --warning: #e0a500;
+  --warning-foreground: #1a1400;
+  --info: var(--blue);
+  --info-foreground: #04080f;
+  --error: var(--destructive);
+  --error-foreground: #ffffff;
 }
 
 @layer base {
