@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { CoachedRep, CoachedReport, RankCost } from "@/lib/sample-report";
 import { cn } from "@/lib/utils";
 
+import { FanoutReplay } from "./fanout-replay";
 import { RepRadar } from "./rep-radar";
 
 const FLAW_LABELS: Record<string, string> = {
@@ -37,6 +38,9 @@ export function RankedReport({ report }: { report: CoachedReport }) {
 
   return (
     <div className="space-y-6">
+      {report.timeline?.length ? (
+        <FanoutReplay timeline={report.timeline} workersMax={report.cost?.workers} />
+      ) : null}
       {report.cost ? <CostPanel cost={report.cost} /> : null}
 
       <ol className="space-y-3">

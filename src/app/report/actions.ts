@@ -42,5 +42,7 @@ export async function buildReport(report: RankReport): Promise<CoachedReport> {
       }
     }),
   );
-  return { reps, worst: report.worst, cost: report.cost };
+  // Pass `timeline` through unchanged so B's fan-out replay (Phase 4) has the
+  // real per-clip timing; coaching enrichment only touches `reps`.
+  return { reps, worst: report.worst, cost: report.cost, timeline: report.timeline };
 }
