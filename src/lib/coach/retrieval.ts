@@ -1,30 +1,29 @@
-// Bright Data retrieval seam for the coaching RAG.
-//
-// The legacy web-search data source has been removed. The retrieval *interface*
-// below is intact, but the live
-// data-source wiring is a stub: hasLiveRetrieval() returns false, so coachFlaw
-// falls back to the curated drill DB until this seam is implemented.
-//
-// TODO: Bright Data fetch -> embeddings -> Insforge pgvector (Prompt B, Phase 1)
-import type { Drill, Flaw, Reference } from "../contracts";
+// Flash-served coaching RAG: InsForge pgvector first, Bright Data live fallback.
+import type { CoachingResult, Drill, Flaw, Reference } from "../contracts";
+import { hasFlashRag, retrieveCitedDrill } from "../flash/client";
 import { buildQuery } from "./queries";
 
-/** True once the Bright Data fetch -> embeddings -> Insforge pgvector path is wired. */
+const cache = new Map<string, Promise<CoachingResult>>();
+
+function retrieve(flaw: Flaw): Promise<CoachingResult> {
+  const existing = cache.get(flaw.id);
+  if (existing) return existing;
+  void buildQuery(flaw);
+  const pending = retrieveCitedDrill(flaw);
+  cache.set(flaw.id, pending);
+  pending.catch(() => cache.delete(flaw.id));
+  return pending;
+}
+
+/** True when a Flash RAG base URL is configured (or during local development). */
 export function hasLiveRetrieval(): boolean {
-  // TODO: Bright Data fetch -> embeddings -> Insforge pgvector (Prompt B, Phase 1)
-  return false;
+  return hasFlashRag();
 }
 
-/** Retrieve a flaw-specific corrective drill. Stubbed until Bright Data lands. */
 export async function retrieveDrill(flaw: Flaw): Promise<Drill> {
-  void buildQuery(flaw); // query feeds the future Bright Data Discover/scraper call
-  // TODO: Bright Data fetch -> embeddings -> Insforge pgvector (Prompt B, Phase 1)
-  throw new Error("Bright Data retrieval not yet wired - using curated fallback");
+  return (await retrieve(flaw)).drill;
 }
 
-/** Retrieve 1-2 supporting sources for a flaw. Stubbed until Bright Data lands. */
 export async function retrieveSources(flaw: Flaw): Promise<Reference[]> {
-  void buildQuery(flaw); // query feeds the future Bright Data Discover/scraper call
-  // TODO: Bright Data fetch -> embeddings -> Insforge pgvector (Prompt B, Phase 1)
-  throw new Error("Bright Data retrieval not yet wired - using curated fallback");
+  return (await retrieve(flaw)).references;
 }

@@ -16,7 +16,25 @@ export const GhostSessionSchema = z.object({
   metrics: JointMetricsSchema,
   coaching: CoachingResultSchema,
   created_at: z.string(),
+  report: z.unknown().nullable().optional(),
+  clip_url: z.string().nullable().optional(),
+  clip_key: z.string().nullable().optional(),
+  keypoints_url: z.string().nullable().optional(),
+  keypoints_key: z.string().nullable().optional(),
+  report_url: z.string().nullable().optional(),
+  report_key: z.string().nullable().optional(),
 });
 
 export type GhostSession = z.infer<typeof GhostSessionSchema>;
 export type PersistenceMode = "insforge" | "local-demo";
+
+export const RunArtifactsSchema = GhostSessionSchema.pick({
+  report: true,
+  clip_url: true,
+  clip_key: true,
+  keypoints_url: true,
+  keypoints_key: true,
+  report_url: true,
+  report_key: true,
+});
+export type RunArtifacts = z.infer<typeof RunArtifactsSchema>;

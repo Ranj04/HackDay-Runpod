@@ -6,15 +6,28 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import type { AnalysisResult, CoachingResult } from "@/lib/contracts";
-import { getPersistenceMode, isInsForgeConfigured, saveSession } from "@/lib/db";
+import {
+  getPersistenceMode,
+  isInsForgeConfigured,
+  saveSession,
+  uploadRunArtifacts,
+} from "@/lib/db";
 import { saveSessionAction } from "@/lib/db/server";
 
 export function SaveSessionButton({
   analysis,
   coaching,
+  clip,
+  compute,
 }: {
   analysis: AnalysisResult;
   coaching: CoachingResult;
+  clip: Blob | null;
+  compute: {
+    provider: "flash-gpu" | "browser-fallback";
+    gpuMs?: number;
+    modelLoadMs?: number;
+  };
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -27,7 +40,13 @@ export function SaveSessionButton({
 
     try {
       if (isInsForgeConfigured()) {
-        await saveSessionAction(analysis, coaching);
+        const artifacts = await uploadRunArtifacts({
+          analysis,
+          coaching,
+          clip,
+          compute,
+        });
+        await saveSessionAction(analysis, coaching, artifacts);
       } else {
         await saveSession(analysis, coaching);
       }

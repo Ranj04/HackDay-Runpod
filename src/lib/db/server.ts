@@ -7,8 +7,10 @@ import type { AnalysisResult, CoachingResult } from "@/lib/contracts";
 
 import {
   GhostSessionSchema,
+  RunArtifactsSchema,
   type GhostSession,
   type PersistenceMode,
+  type RunArtifacts,
 } from "./types";
 
 function configured() {
@@ -78,6 +80,7 @@ export async function loadSessionsAction(): Promise<{
 export async function saveSessionAction(
   analysis: AnalysisResult,
   coaching: CoachingResult,
+  artifactInput?: RunArtifacts,
 ): Promise<GhostSession> {
   if (!configured()) {
     throw new Error("AUTH_REQUIRED");
@@ -93,6 +96,9 @@ export async function saveSessionAction(
   if (!authData.user) {
     throw new Error("AUTH_REQUIRED");
   }
+  const artifacts = artifactInput
+    ? RunArtifactsSchema.parse(artifactInput)
+    : undefined;
 
   const session = GhostSessionSchema.parse({
     id: crypto.randomUUID(),
@@ -104,6 +110,7 @@ export async function saveSessionAction(
     metrics: analysis.metrics,
     coaching,
     created_at: new Date().toISOString(),
+    ...artifacts,
   });
 
   const { data, error } = await insforge.database

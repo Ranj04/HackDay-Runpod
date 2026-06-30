@@ -10,9 +10,14 @@ import { LoaderCircle } from "lucide-react";
 
 import { GhostOverlay } from "@/components/overlay";
 import { ResultsView } from "@/components/results";
-import { loadCapture } from "@/lib/capture-store";
-import { mockShotCapture } from "@/lib/core";
-import type { AnalysisResult, CoachingResult } from "@/lib/contracts";
+import { loadCapture, loadCapturedClip } from "@/lib/capture-store";
+import {
+  AnalysisResultSchema,
+  CoachingResultSchema,
+  type AnalysisResult,
+  type CoachingResult,
+} from "@/lib/contracts";
+import { mockShotCapture } from "@/lib/sample-shot";
 
 import { analyzeAndCoach } from "../capture/actions";
 import { SaveSessionButton } from "./save-session-button";
@@ -25,6 +30,11 @@ type State =
       analysis: AnalysisResult;
       coaching: CoachingResult;
       live: boolean;
+      clip: Blob | null;
+      compute: "flash-gpu" | "browser-fallback";
+      gpuMs?: number;
+      modelLoadMs?: number;
+      warning?: string;
     };
 
 export function ResultsClient() {
@@ -38,10 +48,59 @@ export function ResultsClient() {
 
     const live = loadCapture();
     const capture = live ?? mockShotCapture;
+    const clip = live ? loadCapturedClip() : null;
 
-    analyzeAndCoach(capture)
-      .then(({ analysis, coaching }) =>
-        setState({ phase: "ready", analysis, coaching, live: Boolean(live) }),
+    const run = async () => {
+      if (!clip) {
+        const result = await analyzeAndCoach(capture);
+        return {
+          ...result,
+          compute: "browser-fallback" as const,
+          warning: live
+            ? "Video was unavailable; analyzed browser keypoints instead."
+            : undefined,
+        };
+      }
+
+      const form = new FormData();
+      form.set("capture", JSON.stringify(capture));
+      form.set(
+        "clip",
+        new File([clip], `ghost-${capture.id}.webm`, {
+          type: clip.type || "video/webm",
+        }),
+      );
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        body: form,
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Could not analyze that shot.");
+      }
+      return {
+        analysis: AnalysisResultSchema.parse(payload.analysis),
+        coaching: CoachingResultSchema.parse(payload.coaching),
+        compute: payload.compute as "flash-gpu" | "browser-fallback",
+        gpuMs:
+          typeof payload.gpuMs === "number" ? payload.gpuMs : undefined,
+        modelLoadMs:
+          typeof payload.modelLoadMs === "number"
+            ? payload.modelLoadMs
+            : undefined,
+        warning:
+          typeof payload.warning === "string" ? payload.warning : undefined,
+      };
+    };
+
+    run()
+      .then((result) =>
+        setState({
+          phase: "ready",
+          ...result,
+          live: Boolean(live),
+          clip,
+        }),
       )
       .catch((caught) =>
         setState({
@@ -85,6 +144,14 @@ export function ResultsClient() {
           Sample shot — record your own to see your mechanics.
         </p>
       )}
+      {state.live && (
+        <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-muted-foreground">
+          {state.compute === "flash-gpu"
+            ? `RunPod Flash GPU${state.gpuMs ? ` · ${(state.gpuMs / 1000).toFixed(1)}s` : ""}`
+            : "Browser analysis fallback"}
+          {state.warning ? ` · ${state.warning}` : ""}
+        </p>
+      )}
       <ResultsView
         analysis={state.analysis}
         coaching={state.coaching}
@@ -93,6 +160,12 @@ export function ResultsClient() {
           <SaveSessionButton
             analysis={state.analysis}
             coaching={state.coaching}
+            clip={state.clip}
+            compute={{
+              provider: state.compute,
+              gpuMs: state.gpuMs,
+              modelLoadMs: state.modelLoadMs,
+            }}
           />
         }
       />
