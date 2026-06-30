@@ -1,7 +1,7 @@
 "use server";
 
 // Live-capture analysis runs server-side: analyzeShot is pure pose math, but
-// coachFlaw reads You.com/Tavily/Nebius keys from the environment, so the whole
+// coachFlaw reads Nebius (and the future Bright Data) keys from the environment, so the whole
 // step must run on the server (keys never reach the client).
 import { analyzeShot, coachFlaw } from "@/lib/core";
 import {

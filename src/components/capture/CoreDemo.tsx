@@ -3,8 +3,8 @@
 // ghost overlay, with no dependency on app routing or the platform half. Person B
 // owns src/app; this component lets the core be demoed/verified on its own.
 //
-// Note: coachFlaw runs in curated mode here (client, no keys). For live You.com/
-// Tavily/Nebius coaching, the integrated app calls coachFlaw from a server route.
+// Note: coachFlaw runs in curated mode here (client, no keys). For live
+// Nebius coaching, the integrated app calls coachFlaw from a server route.
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

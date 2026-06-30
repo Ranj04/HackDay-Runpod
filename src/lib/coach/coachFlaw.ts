@@ -1,14 +1,13 @@
-// The coaching chain orchestrator: retrieve (You.com) -> sources (Tavily) ->
-// generate (Nebius), with a per-flaw cache and a curated offline fallback so the
-// demo never depends on a live call on stage.
+// The coaching chain orchestrator: retrieve (Bright Data seam) -> generate
+// (Nebius), with a per-flaw cache and a curated offline fallback so the demo
+// never depends on a live call on stage.
 //
 // Server-only — reads API keys from the environment. Person B should call this
 // from a server action / route handler, not the client.
 import type { CoachFlaw, CoachingResult, Drill, Reference } from "../contracts";
 import { CoachingResultSchema } from "../contracts";
 import { curatedFor } from "./curated";
-import { retrieveDrill, hasYouComKey } from "./youcom";
-import { retrieveSources, hasTavilyKey } from "./tavily";
+import { retrieveDrill, retrieveSources, hasLiveRetrieval } from "./retrieval";
 import { generateCoachingNote, templateSummary, hasNebiusKey } from "./nebius";
 
 const cache = new Map<string, CoachingResult>();
@@ -34,9 +33,11 @@ export const coachFlaw: CoachFlaw = async (flaw): Promise<CoachingResult> => {
   let source: CoachSource = "curated";
 
   try {
-    // Retrieval: prefer live You.com / Tavily when keys exist.
-    if (hasYouComKey()) drill = await retrieveDrill(flaw);
-    if (hasTavilyKey()) references = await retrieveSources(flaw);
+    // Retrieval: prefer the live Bright Data seam once it is wired (Prompt B).
+    if (hasLiveRetrieval()) {
+      drill = await retrieveDrill(flaw);
+      references = await retrieveSources(flaw);
+    }
 
     // Generation: Nebius writes the grounded note, else a deterministic template.
     if (hasNebiusKey()) {
@@ -44,7 +45,7 @@ export const coachFlaw: CoachFlaw = async (flaw): Promise<CoachingResult> => {
       source = "live";
     } else {
       summary = templateSummary(flaw, drill);
-      if (hasYouComKey() || hasTavilyKey()) source = "live";
+      if (hasLiveRetrieval()) source = "live";
     }
   } catch {
     // Any live failure -> fully curated, demo-safe.

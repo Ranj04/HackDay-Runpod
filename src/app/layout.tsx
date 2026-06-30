@@ -54,12 +54,6 @@ export default function RootLayout({
                 >
                   History
                 </Link>
-                <Link
-                  href="/battle"
-                  className="rounded-full px-3 py-2 text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
-                >
-                  Battle
-                </Link>
                 <AuthNav />
               </nav>
             </div>

@@ -45,8 +45,8 @@ export async function generateCoachingNote({ flaw, drill, references }: Generate
     "Do NOT introduce facts, drills, or claims that are not in the provided material.";
   const user =
     `Flaw: ${flaw.label}\n${metricLine(flaw)}\n\n` +
-    `Drill (from You.com): ${drill.title}\nSteps:\n${drill.steps.map((s) => `- ${s}`).join("\n")}\n\n` +
-    `Supporting sources (from Tavily):\n${sources}\n\n` +
+    `Drill: ${drill.title}\nSteps:\n${drill.steps.map((s) => `- ${s}`).join("\n")}\n\n` +
+    `Supporting sources:\n${sources}\n\n` +
     "Write the note now. Reference the measured numbers and point the player at the drill.";
 
   const res = await client.chat.completions.create({

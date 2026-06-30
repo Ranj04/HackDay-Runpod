@@ -1,7 +1,7 @@
 // Curated, demo-safe coaching content per flaw, used when live retrieval keys
 // aren't configured or a live call fails. These drills/sources are real coaching
 // references (not fabricated), so the demo always returns something defensible.
-// When keys are present, live You.com/Tavily/Nebius output supersedes this.
+// When the Bright Data seam + Nebius are wired, live output supersedes this.
 import type { Drill, Flaw, Reference } from "../contracts";
 
 interface CuratedEntry {

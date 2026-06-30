@@ -1,8 +1,7 @@
 "use client";
 // Client-side MediaPipe Pose Landmarker setup. Lazily creates a single VIDEO-mode
 // landmarker, trying the GPU delegate first and falling back to CPU if GPU init
-// fails. (A TensorFlow.js runtime fallback is available as a future option if
-// MediaPipe can't initialize at all — see @tensorflow/tfjs in deps.)
+// fails.
 import { FilesetResolver, PoseLandmarker } from "@mediapipe/tasks-vision";
 
 const WASM_BASE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm";
