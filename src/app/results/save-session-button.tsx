@@ -65,7 +65,7 @@ export function SaveSessionButton({
   return (
     <div className="flex flex-col items-end gap-2">
       <Button
-        className="h-11 bg-[#2e86ff] px-5 font-medium text-[#04080f] hover:bg-[#1e6fe0]"
+        className="h-11 px-5 font-medium"
         disabled={pending}
         onClick={handleSave}
       >
@@ -88,7 +88,7 @@ export function SaveSessionButton({
           : "Local demo storage"}
       </span>
       {error && (
-        <span aria-live="polite" className="max-w-sm text-xs text-red-600">
+        <span aria-live="polite" className="max-w-sm text-xs text-destructive">
           {error}
         </span>
       )}

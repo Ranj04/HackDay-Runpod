@@ -183,7 +183,10 @@
   --muted-foreground: #9db1c5;
   --accent: #16324f;
   --accent-foreground: var(--blue-100);
-  --destructive: #d7263d;
+  /* Lighter in dark so it stays AA as inline status TEXT on dark surfaces/tints
+     (shadcn uses --destructive as a text color); the solid red #d7263d is the
+     light-mode value. */
+  --destructive: #fb7185;
   --border: #21384f;
   --input: #21384f;
   --ring: var(--blue);

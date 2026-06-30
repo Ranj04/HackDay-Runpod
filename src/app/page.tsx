@@ -14,14 +14,14 @@ export default function Home() {
         <section>
           <Badge
             variant="outline"
-            className="h-7 border-white/10 bg-white/5 px-3 backdrop-blur"
+            className="h-7 border-border bg-muted px-3 backdrop-blur"
           >
             Basketball form coach
           </Badge>
           <h1 className="mt-7 max-w-3xl text-6xl font-semibold leading-[0.95] tracking-[-0.065em] sm:text-7xl">
             See the shot
             <br />
-            <span className="text-[#5aa0ff]">you can’t feel.</span>
+            <span className="text-primary">you can’t feel.</span>
           </h1>
           <p className="mt-7 max-w-xl text-lg leading-8 text-muted-foreground">
             Echo turns one video into measured mechanics, a visual reference,
@@ -31,7 +31,7 @@ export default function Home() {
             <Link
               className={cn(
                 buttonVariants(),
-                "h-12 rounded-full bg-[#2e86ff] px-6 font-medium text-[#04080f] hover:bg-[#1e6fe0]",
+                "h-12 rounded-full bg-accent-brand px-6 font-medium text-accent-brand-foreground hover:bg-accent-brand/90",
               )}
               href="/capture"
             >
@@ -41,7 +41,7 @@ export default function Home() {
             <Link
               className={cn(
                 buttonVariants({ variant: "outline" }),
-                "h-12 rounded-full bg-white/5 px-6",
+                "h-12 rounded-full bg-muted px-6",
               )}
               href="/results"
             >
@@ -50,11 +50,11 @@ export default function Home() {
           </div>
           <div className="mt-11 flex flex-wrap gap-x-7 gap-y-3 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
             <span className="flex items-center gap-2">
-              <ScanLine className="size-4 text-[#5aa0ff]" />
+              <ScanLine className="size-4 text-primary" />
               Pose tracked
             </span>
             <span className="flex items-center gap-2">
-              <Crosshair className="size-4 text-[#5aa0ff]" />
+              <Crosshair className="size-4 text-primary" />
               Reference aligned
             </span>
           </div>

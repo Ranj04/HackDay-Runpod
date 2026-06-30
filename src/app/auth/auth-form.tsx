@@ -38,13 +38,13 @@ export function AuthForm({
 
   return (
     <div>
-      <div className="mb-6 grid grid-cols-2 rounded-xl bg-white/5 p-1">
+      <div className="mb-6 grid grid-cols-2 rounded-xl bg-muted p-1">
         {(["sign-in", "sign-up"] as const).map((option) => (
           <button
             className={cn(
               "rounded-lg px-4 py-2 text-sm font-medium transition",
               mode === option
-                ? "bg-[#101a2b] text-foreground shadow-sm"
+                ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground",
             )}
             key={option}
@@ -86,7 +86,7 @@ export function AuthForm({
         {state.error && (
           <p
             aria-live="polite"
-            className="rounded-lg bg-[#ff3b30]/10 px-3 py-2 text-sm text-[#ff9a8a]"
+            className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
           >
             {state.error}
           </p>
@@ -94,13 +94,13 @@ export function AuthForm({
         {state.message && (
           <p
             aria-live="polite"
-            className="rounded-lg bg-[#11233e] px-3 py-2 text-sm text-[#1e2a3d]"
+            className="rounded-lg bg-accent px-3 py-2 text-sm text-accent-foreground"
           >
             {state.message}
           </p>
         )}
         <Button
-          className="h-11 w-full bg-[#2e86ff] font-medium text-[#04080f] hover:bg-[#1e6fe0]"
+          className="h-11 w-full font-medium"
           disabled={pending || !configured}
           type="submit"
         >
@@ -151,7 +151,7 @@ function VerifyEmailForm({
           <input
             autoComplete="one-time-code"
             autoFocus
-            className="mt-1.5 h-12 w-full rounded-lg border border-white/10 bg-[#101a2b] px-3 text-center text-2xl text-foreground tracking-[0.5em] outline-none transition placeholder:text-white/20 focus:border-[#2e86ff] focus:ring-3 focus:ring-[#2e86ff]/25"
+            className="mt-1.5 h-12 w-full rounded-lg border border-border bg-secondary px-3 text-center text-2xl text-foreground tracking-[0.5em] outline-none transition placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring/25"
             inputMode="numeric"
             maxLength={6}
             name="otp"
@@ -163,7 +163,7 @@ function VerifyEmailForm({
         {banner && (
           <p
             aria-live="polite"
-            className="rounded-lg bg-[#11233e] px-3 py-2 text-sm text-[#cfe2ff]"
+            className="rounded-lg bg-accent px-3 py-2 text-sm text-accent-foreground"
           >
             {banner}
           </p>
@@ -171,13 +171,13 @@ function VerifyEmailForm({
         {state.error && (
           <p
             aria-live="polite"
-            className="rounded-lg bg-[#ff6a1a]/10 px-3 py-2 text-sm text-[#ffd2b3]"
+            className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
           >
             {state.error}
           </p>
         )}
         <Button
-          className="h-11 w-full bg-[#2e86ff] font-medium text-[#04080f] hover:bg-[#1e6fe0]"
+          className="h-11 w-full font-medium"
           disabled={pending}
           type="submit"
         >
@@ -210,7 +210,7 @@ function Field({
     <label className="block text-sm font-medium">
       {label}
       <input
-        className="mt-1.5 h-11 w-full rounded-lg border border-white/10 bg-[#101a2b] px-3 outline-none transition placeholder:text-white/30 focus:border-[#2e86ff] focus:ring-3 focus:ring-[#2e86ff]/25"
+        className="mt-1.5 h-11 w-full rounded-lg border border-border bg-secondary px-3 outline-none transition placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring/25"
         {...props}
       />
     </label>

@@ -46,11 +46,11 @@ export function ProgressView({
             Your form, over time.
           </h1>
         </div>
-        <Badge className="h-7 gap-1.5 bg-[#101a2b] text-foreground ring-1 ring-white/10">
+        <Badge className="h-7 gap-1.5 bg-muted text-foreground ring-1 ring-border">
           {mode === "insforge" ? (
-            <Cloud className="size-3.5 text-[#5aa0ff]" />
+            <Cloud className="size-3.5 text-primary" />
           ) : (
-            <HardDrive className="size-3.5 text-[#5aa0ff]" />
+            <HardDrive className="size-3.5 text-primary" />
           )}
           {mode === "insforge" ? "InsForge synced" : "Local demo mode"}
         </Badge>
@@ -94,7 +94,7 @@ export function ProgressView({
         <CardContent className="space-y-2">
           {sessions.map((session) => (
             <article
-              className="grid items-center gap-3 rounded-xl border bg-[#101a2b] p-4 sm:grid-cols-[auto_1fr_auto]"
+              className="grid items-center gap-3 rounded-xl border bg-muted p-4 sm:grid-cols-[auto_1fr_auto]"
               key={session.id}
             >
               <strong className="text-3xl tabular-nums">{session.score}</strong>
@@ -133,7 +133,7 @@ function Stat({
   return (
     <Card className="border-0 ring-white/10">
       <CardContent className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#11233e] text-[#1e6fe0] [&>svg]:size-4">
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary [&>svg]:size-4">
           {icon}
         </span>
         <div className="min-w-0">
@@ -164,7 +164,7 @@ function ScoreChart({ sessions }: { sessions: EchoSession[] }) {
     .join(" ");
 
   return (
-    <div className="overflow-hidden rounded-xl bg-[#101a2b] p-3 sm:p-5">
+    <div className="overflow-hidden rounded-xl bg-muted p-3 sm:p-5">
       <svg
         aria-label="Score over time chart"
         className="h-auto w-full"
@@ -174,7 +174,7 @@ function ScoreChart({ sessions }: { sessions: EchoSession[] }) {
         {[30, 80, 130, 180].map((y) => (
           <line
             key={y}
-            stroke="rgba(255,255,255,.1)"
+            stroke="var(--border)"
             strokeWidth="1"
             x1="25"
             x2="575"
@@ -185,7 +185,7 @@ function ScoreChart({ sessions }: { sessions: EchoSession[] }) {
         <polyline
           fill="none"
           points={points}
-          stroke="#2e86ff"
+          stroke="var(--chart-1)"
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth="5"
@@ -194,9 +194,9 @@ function ScoreChart({ sessions }: { sessions: EchoSession[] }) {
           const [x, y] = points.split(" ")[index].split(",");
           return (
             <g key={session.id}>
-              <circle cx={x} cy={y} fill="#101a2b" r="7" stroke="#2e86ff" strokeWidth="4" />
+              <circle cx={x} cy={y} fill="var(--muted)" r="7" stroke="var(--chart-1)" strokeWidth="4" />
               <text
-                fill="white"
+                fill="var(--foreground)"
                 fontSize="12"
                 textAnchor="middle"
                 x={x}
