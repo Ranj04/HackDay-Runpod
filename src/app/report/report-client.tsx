@@ -29,26 +29,44 @@ export function ReportClient() {
 
   async function load() {
     setState({ phase: "loading" });
+
+    // Each source is best-effort: a failure in one never blocks the report — we
+    // always fall through to a guaranteed sample render, so /report can't crash.
+
+    // 1. A persisted report (Supabase), if the user is signed in.
     try {
       const saved = isSupabaseConfigured() ? await loadLatestReportAction() : null;
-      if (saved && saved.reps?.length) {
+      if (saved?.reps?.length) {
         setState({ phase: "ready", report: saved, persisted: true, live: false });
         return;
       }
+    } catch {
+      // ignore — fall through
+    }
 
+    // 2. A live fan-out from A's Flash pipeline, if configured.
+    try {
       const fanout = await fetchFanoutReportAction();
       if (fanout?.reps?.length) {
         const report = await buildReport(fanout, { liveCoaching: true });
         setState({ phase: "ready", report, persisted: false, live: true });
         return;
       }
+    } catch {
+      // ignore — fall through
+    }
 
+    // 3. Sample fallback — must always render.
+    try {
       const report = await buildReport(sampleReport);
       setState({ phase: "ready", report, persisted: false, live: false });
-    } catch (caught) {
+    } catch {
+      // Last resort: render the raw contract (ranked reps without cited drills).
       setState({
-        phase: "error",
-        message: caught instanceof Error ? caught.message : "Could not load report.",
+        phase: "ready",
+        report: sampleReport as CoachedReport,
+        persisted: false,
+        live: false,
       });
     }
   }

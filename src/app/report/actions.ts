@@ -65,7 +65,11 @@ export async function buildReport(
       }
 
       if (!liveCoaching) {
-        return { ...rep, coaching: curatedCoaching(rep.flaw_label) };
+        try {
+          return { ...rep, coaching: curatedCoaching(rep.flaw_label) };
+        } catch {
+          return { ...rep };
+        }
       }
 
       try {
