@@ -50,6 +50,21 @@ rag = Endpoint(
 )
 
 
+@rag.get("/health")
+async def health() -> dict:
+    """Readiness probe — no auth, no external calls; reports required-env presence."""
+    import os
+
+    required = (
+        "BRIGHTDATA_API_TOKEN",
+        "OPENROUTER_API_KEY",
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+    )
+    missing = [name for name in required if not os.environ.get(name)]
+    return {"status": "ok" if not missing else "degraded", "missing_env": missing}
+
+
 @rag.post("/drill")
 async def cited_drill(request: dict) -> dict:
     """Return a grounded drill for one scorer ``flaw_label``."""
