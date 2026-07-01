@@ -20,23 +20,21 @@ Key patterns:
 - Cache large model weights to a `NetworkVolume` — do not bundle them in the deployment (500 MB limit).
 - Use `flash dev` locally to test; `flash deploy` for production.
 
-<!-- INSFORGE:START -->
-## InsForge backend
+<!-- SUPABASE:START -->
+## Supabase backend
 
-This project uses [InsForge](https://insforge.dev): an all-in-one, open-source Postgres-based backend (BaaS) that gives this app a database, authentication, file storage, edge functions, realtime, an AI model gateway, and payments through one platform.
+This project uses [Supabase](https://supabase.com) as the backend: Postgres + **pgvector**, Auth, and Storage.
 
-- **Project:** **oss-project** (API base `https://9mw7i2fb.us-east.insforge.app`)
-- **Skills:** these InsForge skills are installed for supported coding agents. Reach for them before implementing any InsForge feature instead of guessing the API:
-  - `insforge`: app code with the `@insforge/sdk` client (database CRUD, auth, storage, edge functions, realtime, AI, email, and Stripe payments).
-  - `insforge-cli`: backend and infrastructure via the `insforge` CLI (projects, SQL, migrations, RLS policies, storage buckets, functions, secrets, payment setup, schedules, deploys).
-  - `insforge-debug`: diagnosing failures (SDK/HTTP errors, RLS denials, auth and OAuth issues) and running security or performance audits.
-  - `insforge-integrations`: wiring external auth providers (Clerk, Auth0, WorkOS, Better Auth, etc.) for JWT-based RLS, or the OKX x402 payment facilitator.
-  - `find-skills`: discovering additional skills on demand.
-- **Credentials:** app code reads keys from `.env.local`; the CLI reads `.insforge/project.json`. Never hardcode or commit keys.
+- **Project:** ref `vtdgoihwxdcoatieyuvx` (`https://vtdgoihwxdcoatieyuvx.supabase.co`).
+- **Client:** `@supabase/supabase-js` + `@supabase/ssr` — browser client, cookie-bound server client, and a session-refresh middleware (`src/proxy.ts`), all under `src/lib/supabase/`.
+- **Vector store:** `coaching_documents` (`embedding vector(1536)`) + the `match_coaching_documents` RPC — the Flash RAG upserts/retrieves here with the service role.
+- **Auth + DB:** email/password (auto-confirm) via Supabase Auth; `echo_sessions` rows are RLS-scoped to `auth.uid()`.
+- **Storage:** `echo-runs` bucket for clips/keypoints/reports (server-side uploads with the service role, `src/lib/db/supabase-admin.ts`).
+- **Credentials:** `.env.local` — `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server-only). Never hardcode or commit keys.
 
 Key patterns:
 
-- Database inserts take an array: `insert([{ ... }])`.
+- Admin/server writes use the service-role client; browser reads/writes use the anon client under RLS.
 - Reference users with `auth.users(id)`; use `auth.uid()` in RLS policies.
-- For storage uploads, persist both the returned `url` and `key`.
-<!-- INSFORGE:END -->
+- Apply schema via `migrations/` (Supabase SQL editor or `supabase db push`).
+<!-- SUPABASE:END -->

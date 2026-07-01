@@ -131,8 +131,8 @@ first, and optionally enriches with RAG drills. The ranked report lands in
 - **Pose on Flash, not the browser.** Server-side GPU pose is the compute story.
   The endpoint emits the existing keypoint schema so analysis and overlay code
   are reused, not rewritten.
-- **Supabase as the single backend.** Auth, Postgres, pgvector, and Storage
-  replaced the earlier InsForge integration. Flash workers connect via service-role
+- **Supabase as the single backend.** Auth, Postgres, pgvector, and Storage all run on one Supabase
+  project. Flash workers connect via service-role
   credentials (`SUPABASE_SERVICE_ROLE_KEY` + `SUPABASE_URL`).
 - **Directional, reference-based feedback** — not absolute biomechanical
   precision. A 2D estimate measures angles in the image plane; we compare
