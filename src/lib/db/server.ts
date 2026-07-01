@@ -292,25 +292,26 @@ export async function loadLatestReportAction(): Promise<CoachedReport | null> {
   if (!isSupabaseConfigured()) {
     return null;
   }
-  const supabase = await getServerSupabase();
-  const { data: authData, error: authError } = await supabase.auth.getUser();
-  if (authError) {
-    throw new Error(authError.message);
-  }
-  if (!authData.user) {
+  try {
+    const supabase = await getServerSupabase();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from("echo_sessions")
+      .select("report, created_at")
+      .eq("user_id", authData.user.id)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    if (error) {
+      return null;
+    }
+
+    const row = (data ?? []).find((r: { report?: unknown }) => r.report);
+    return (row?.report as CoachedReport | undefined) ?? null;
+  } catch {
     return null;
   }
-
-  const { data, error } = await supabase
-    .from("echo_sessions")
-    .select("report, created_at")
-    .eq("user_id", authData.user.id)
-    .order("created_at", { ascending: false })
-    .limit(10);
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const row = (data ?? []).find((r: { report?: unknown }) => r.report);
-  return (row?.report as CoachedReport | undefined) ?? null;
 }

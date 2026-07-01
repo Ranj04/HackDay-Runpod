@@ -68,6 +68,8 @@ async def cited_drill(request: dict) -> dict:
         raise RuntimeError(f"Missing worker environment: {', '.join(missing)}")
 
     flaw_label = str(request.get("flaw_label", "")).strip()
+    if not flaw_label and isinstance(request.get("request"), dict):
+        flaw_label = str(request["request"].get("flaw_label", "")).strip()
     if not flaw_label:
         raise ValueError("flaw_label is required")
 

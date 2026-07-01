@@ -41,7 +41,7 @@ function endpointUrl(kind: "pose" | "rag" | "rank"): string {
       : kind === "rag"
         ? process.env.RUNPOD_RAG_ENDPOINT_URL
         : process.env.RUNPOD_RANK_ENDPOINT_URL;
-  if (direct?.trim()) return direct.trim();
+  if (direct?.trim()) return normalizeRunpodUrl(direct.trim(), kind);
 
   const base = flashBaseUrl();
   if (!base) {
@@ -50,6 +50,24 @@ function endpointUrl(kind: "pose" | "rag" | "rank"): string {
   if (kind === "pose") return `${base}/flash/pose_endpoint/runsync`;
   if (kind === "rag") return `${base}/flash/coaching_rag/drill`;
   return `${base}/flash/orchestrate/rank`;
+}
+
+/** Append RunPod serverless / Flash path suffixes when env vars are bare hosts. */
+function normalizeRunpodUrl(url: string, kind: "pose" | "rag" | "rank"): string {
+  const trimmed = url.replace(/\/$/, "");
+  if (/api\.runpod\.ai\/v2\/[^/]+$/i.test(trimmed)) {
+    return `${trimmed}/runsync`;
+  }
+  if (trimmed.includes(".api.runpod.ai") && !trimmed.includes("/flash/")) {
+    const suffix =
+      kind === "pose"
+        ? "/flash/pose_endpoint/runsync"
+        : kind === "rag"
+          ? "/flash/coaching_rag/drill"
+          : "/flash/orchestrate/rank";
+    return `${trimmed}${suffix}`;
+  }
+  return trimmed;
 }
 
 async function postJson(url: string, body: unknown, timeoutMs: number) {
@@ -177,7 +195,7 @@ export async function retrieveCitedDrill(
 ): Promise<CoachingResult> {
   const raw = await postJson(
     endpointUrl("rag"),
-    { request: { flaw_label: flaw.id } },
+    { flaw_label: flaw.id },
     180_000,
   );
   const output = RagOutputSchema.parse(raw?.output ?? raw);

@@ -5,6 +5,9 @@
 // curated fallback so drills + sources render even before the endpoint is live.
 import { coachFlaw } from "@/lib/core";
 import type { Flaw } from "@/lib/contracts";
+import { CoachingResultSchema } from "@/lib/contracts";
+import { curatedFor } from "@/lib/coach/curated";
+import { templateSummary } from "@/lib/coach/nebius";
 import { hasFlashRank, rankClipsOnFlash } from "@/lib/flash/client";
 import type { CoachedRep, CoachedReport, RankReport } from "@/lib/sample-report";
 
@@ -28,18 +31,51 @@ function flawFromLabel(flawLabel: string): Flaw {
   };
 }
 
+function curatedCoaching(flawLabel: string): CoachedRep["coaching"] {
+  const flaw = flawFromLabel(flawLabel);
+  const curated = curatedFor(flaw);
+  return CoachingResultSchema.parse({
+    flawId: flaw.id,
+    summary: templateSummary(flaw, curated.drill),
+    drill: curated.drill,
+    references: curated.references,
+  });
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("COACHING_TIMEOUT")), ms),
+    ),
+  ]);
+}
+
 /** Per rep with a real flaw, fetch its cited drill (worst reps drive the report). */
-export async function buildReport(report: RankReport): Promise<CoachedReport> {
+export async function buildReport(
+  report: RankReport,
+  options?: { liveCoaching?: boolean },
+): Promise<CoachedReport> {
+  const liveCoaching = options?.liveCoaching ?? false;
+
   const reps: CoachedRep[] = await Promise.all(
     report.reps.map(async (rep): Promise<CoachedRep> => {
       if (rep.flaw_label === "none" || rep.flaw_label === "error") {
         return { ...rep };
       }
+
+      if (!liveCoaching) {
+        return { ...rep, coaching: curatedCoaching(rep.flaw_label) };
+      }
+
       try {
-        const coaching = await coachFlaw(flawFromLabel(rep.flaw_label));
+        const coaching = await withTimeout(
+          coachFlaw(flawFromLabel(rep.flaw_label)),
+          12_000,
+        );
         return { ...rep, coaching };
       } catch {
-        return { ...rep }; // never let one RAG miss sink the whole report
+        return { ...rep, coaching: curatedCoaching(rep.flaw_label) };
       }
     }),
   );

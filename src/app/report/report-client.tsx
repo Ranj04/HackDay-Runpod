@@ -38,7 +38,7 @@ export function ReportClient() {
 
       const fanout = await fetchFanoutReportAction();
       if (fanout?.reps?.length) {
-        const report = await buildReport(fanout);
+        const report = await buildReport(fanout, { liveCoaching: true });
         setState({ phase: "ready", report, persisted: false, live: true });
         return;
       }
