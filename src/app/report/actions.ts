@@ -88,16 +88,30 @@ export async function buildReport(
   return { reps, worst: report.worst, cost: report.cost, timeline: report.timeline };
 }
 
-/** Live fan-out from A's Flash orchestrator when BATCH_CLIP_URL + Flash are set. */
+/**
+ * Live fan-out from A's Flash orchestrator. Honest by construction: one rep per
+ * DISTINCT clip. `BATCH_CLIP_URLS` is a comma-separated list of different shots;
+ * `BATCH_CLIP_URL`/`CLIP_URL` is a single clip (a batch of one). We no longer
+ * fabricate N reps by scoring the same clip N times — a real ranking needs real,
+ * different clips.
+ */
 export async function fetchFanoutReportAction(): Promise<RankReport | null> {
   if (!hasFlashRank()) return null;
 
-  const clipUrl = process.env.BATCH_CLIP_URL ?? process.env.CLIP_URL;
-  if (!clipUrl?.trim()) return null;
+  const urls = (
+    process.env.BATCH_CLIP_URLS ??
+    process.env.BATCH_CLIP_URL ??
+    process.env.CLIP_URL ??
+    ""
+  )
+    .split(",")
+    .map((u) => u.trim())
+    .filter(Boolean)
+    .slice(0, 10);
+  if (urls.length === 0) return null;
 
-  const count = Math.min(10, Math.max(1, Number(process.env.BATCH_CLIP_COUNT ?? "5")));
-  const clips = Array.from({ length: count }, (_, i) => ({
-    clip_url: clipUrl.trim(),
+  const clips = urls.map((clip_url, i) => ({
+    clip_url,
     rep_id: `r${i + 1}`,
     stride: 4,
     nonce: `batch-${i}-${Date.now()}`,
