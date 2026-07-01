@@ -5,8 +5,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
 import { detectShootingSide } from "@/lib/analysis";
+import { alignToReference } from "@/lib/analysis/align";
+import { GOOD_FORM_FRAMES } from "@/lib/analysis/reference";
 import { isVisible } from "@/lib/vision/visibility";
-import type { AnalysisResult, PoseFrame } from "@/lib/contracts";
+import type { AnalysisResult, PoseFrame, ShotCapture } from "@/lib/contracts";
 import {
   drawBackdrop,
   drawBall,
@@ -27,6 +29,18 @@ export interface EchoOverlayProps {
   /** Canvas only — no chrome or playback controls (e.g. landing hero). */
   compact?: boolean;
 }
+
+// Draw the echo from the clean hand-authored exemplar. The active SCORING
+// reference is the real-Curry clip (kept for the flaw bands), but that's a noisy
+// broadcast three-quarter extraction (top-heavy, ~1.1 legs/torso) that looks
+// distorted as a side-on stick figure — so the visual "ideal" uses good-form,
+// which has human proportions. Display-only: scoring is untouched.
+const GOOD_FORM_CAPTURE: ShotCapture = {
+  id: "good-form-echo",
+  frames: GOOD_FORM_FRAMES,
+  fps: 30,
+  view: "side",
+};
 
 const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 const HOLD_MS = 650; // pause on the follow-through before looping
@@ -49,11 +63,17 @@ function lerpFrame(a: PoseFrame, b: PoseFrame, t: number): PoseFrame {
 export function EchoOverlay({ result, width = 440, height = 560, className, compact = false }: EchoOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const frames = result.capture.frames;
-  const echoFrames = result.echoRef;
   const total = frames.length;
   const fps = Math.max(1, result.capture.fps);
   const releaseIndex =
     total > 0 ? Math.min(result.metrics.releaseFrameIndex ?? 0, total - 1) : 0;
+  // Echo track for DISPLAY: align the clean good-form exemplar onto the user
+  // (release-matched + hip-centered + torso-scaled), same as result.echoRef but
+  // sourced from good-form instead of the noisy Curry scoring reference.
+  const echoFrames = useMemo(
+    () => alignToReference(result.capture, GOOD_FORM_CAPTURE, releaseIndex),
+    [result.capture, releaseIndex],
+  );
 
   const side = useMemo(() => detectShootingSide(result.capture), [result.capture]);
   const flawJoint = useMemo(() => jointsForFlaw(result.topFlaw.metric, side)[0], [result.topFlaw.metric, side]);
