@@ -1,19 +1,29 @@
 // The reference "echo" exemplar and its derived metrics.
 //
-// good-form.json is a single curated clean shot (a reference exemplar, NOT ground
-// truth — see fixtures/reference/README.md). Flaw thresholds are tuned against
-// these reference metrics. If Person B's Nebius reference-builder produces a new
-// exemplar under fixtures/reference/generated/, adopting it is a joint call.
+// The active reference is generated/curry.json — a real Stephen Curry (#30)
+// side-on jump shot extracted from footage via MediaPipe Pose (see
+// fixtures/reference/generated/README.md). It is a reference exemplar, NOT ground
+// truth: publicly available Curry footage is broadcast game video, so this is a
+// three-quarter/side view, which makes the framing/view-sensitive metrics
+// (releaseHeight, guideHandPresence) noisier — the flaw bands in flaws.ts are
+// widened accordingly.
+//
+// good-form.json (the original hand-authored exemplar) is kept as a fallback and
+// is still what the __verify__ gate validates against.
+import curry from "../../../fixtures/reference/generated/curry.json";
 import goodForm from "../../../fixtures/reference/good-form.json";
 import type { PoseFrame, ShotCapture } from "../contracts";
 import { extractMetrics } from "./extractMetrics";
 
-export const REFERENCE_FRAMES = goodForm as PoseFrame[];
+/** Hand-authored clean side-on exemplar (previous default; retained as fallback). */
+export const GOOD_FORM_FRAMES = goodForm as PoseFrame[];
+
+export const REFERENCE_FRAMES = curry as PoseFrame[];
 
 export const REFERENCE_CAPTURE: ShotCapture = {
-  id: "reference-good-form",
+  id: "reference-curry",
   frames: REFERENCE_FRAMES,
-  fps: 30,
+  fps: 20,
   view: "side",
 };
 

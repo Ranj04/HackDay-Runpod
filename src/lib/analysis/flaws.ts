@@ -19,13 +19,20 @@ interface MetricSpec {
   dirLow: FlawDirection;
 }
 
-// Bands/weights are tuned against the curated reference (see reference.ts).
+// Bands/weights are tuned against the active reference (see reference.ts), now a
+// real Curry side-on shot. Release-instant metrics (elbow angle, wrist snap) come
+// through the three-quarter broadcast view cleanly and keep tight bands. The
+// framing/view-sensitive and load-phase metrics are noisier against real footage
+// and get wider bands + lower weight so correct form isn't over-flagged:
+//   - releaseHeight: absolute wrist height varies with how the shooter is framed.
+//   - guideHandPresence: 2D wrist overlap in a ¾ view inflates the reference (0.85).
+//   - kneeFlexionAtDip: a release-centered clip under-captures the dip/load phase.
 const METRIC_SPECS: MetricSpec[] = [
   { key: "releaseElbowAngle", flawId: "elbow_flare", label: "Elbow flaring out at release", band: 10, weight: 1.0, dirHigh: "too_high", dirLow: "too_low" },
-  { key: "kneeFlexionAtDip", flawId: "shallow_dip", label: "Shallow leg dip — not enough bend", band: 12, weight: 0.7, dirHigh: "too_high", dirLow: "too_low" },
+  { key: "kneeFlexionAtDip", flawId: "shallow_dip", label: "Shallow leg dip — not enough bend", band: 20, weight: 0.5, dirHigh: "too_high", dirLow: "too_low" },
   { key: "wristSnapTiming", flawId: "wrist_snap", label: "Wrist snap timing off", band: 80, weight: 0.5, dirHigh: "late", dirLow: "early" },
-  { key: "guideHandPresence", flawId: "guide_hand", label: "Guide hand interfering at release", band: 0.25, weight: 0.6, dirHigh: "too_high", dirLow: "too_low" },
-  { key: "releaseHeight", flawId: "low_release", label: "Release point too low", band: 0.1, weight: 0.5, dirHigh: "too_high", dirLow: "too_low" },
+  { key: "guideHandPresence", flawId: "guide_hand", label: "Guide hand interfering at release", band: 0.4, weight: 0.4, dirHigh: "too_high", dirLow: "too_low" },
+  { key: "releaseHeight", flawId: "low_release", label: "Release point too low", band: 0.15, weight: 0.5, dirHigh: "too_high", dirLow: "too_low" },
 ];
 
 // How many bands out before a metric is fully penalized in the score.

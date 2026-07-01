@@ -2,6 +2,7 @@
 export { useCamera, type UseCamera } from "./useCamera";
 export { createPoseLandmarker, disposePoseLandmarker } from "./poseLandmarker";
 export { buildCapture, estimateFps, type BuildCaptureOptions } from "./buildCapture";
+export { extractCaptureFromVideo, type ExtractFromVideoOptions } from "./extractFromVideo";
 export {
   POSE_LANDMARK_NAMES,
   SHOT_LANDMARKS,
