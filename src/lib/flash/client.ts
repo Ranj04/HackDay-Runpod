@@ -197,7 +197,9 @@ export async function retrieveCitedDrill(
 ): Promise<CoachingResult> {
   const raw = await postJson(
     endpointUrl("rag"),
-    { flaw_label: flaw.id },
+    // `auth` is the shared secret the load-balanced RAG worker checks (server-only
+    // env, never exposed to the browser). Empty when unset -> worker fails open.
+    { flaw_label: flaw.id, auth: process.env.FLASH_SHARED_SECRET ?? "" },
     10_000, // coaching has a curated fallback — fail fast, don't hang the UI
   );
   const output = RagOutputSchema.parse(raw?.output ?? raw);

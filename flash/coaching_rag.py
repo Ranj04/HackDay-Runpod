@@ -23,6 +23,8 @@ def _worker_environment() -> dict[str, str]:
         "OPENROUTER_API_KEY",
         "SUPABASE_URL",
         "SUPABASE_SERVICE_ROLE_KEY",
+        # Phase 2 (security): shared secret gating this load-balanced endpoint.
+        "FLASH_SHARED_SECRET",
     )
     return {name: os.environ.get(name, "") for name in names}
 
@@ -71,6 +73,19 @@ async def cited_drill(request: dict) -> dict:
     missing = [name for name in required if not os.environ.get(name)]
     if missing:
         raise RuntimeError(f"Missing worker environment: {', '.join(missing)}")
+
+    # Phase 2 (security): a load-balanced endpoint is directly reachable, unlike the
+    # queue-based pose endpoint (gated by RunPod's platform Bearer auth). Require a
+    # shared secret in the request body. Enforced only when FLASH_SHARED_SECRET is set
+    # on the worker (fail-open when unset keeps local dev working); the Next server
+    # sends the matching secret. Uses hmac.compare_digest to avoid timing leaks.
+    import hmac
+
+    expected_secret = os.environ.get("FLASH_SHARED_SECRET", "")
+    if expected_secret and not hmac.compare_digest(
+        str(request.get("auth", "")), expected_secret
+    ):
+        raise RuntimeError("UNAUTHORIZED")
 
     flaw_label = str(request.get("flaw_label", "")).strip()
     if not flaw_label and isinstance(request.get("request"), dict):
