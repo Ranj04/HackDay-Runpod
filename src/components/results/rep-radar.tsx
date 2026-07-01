@@ -13,7 +13,7 @@ const AXES = [
 ] as const satisfies ReadonlyArray<{ key: keyof RepDimensions; label: string; angle: number }>;
 
 const C = 80; // center
-const R = 54; // outer radius (100 = the reference ring)
+const R = 48; // outer radius (100 = the reference ring); leaves room for labels
 const RINGS = [0.25, 0.5, 0.75, 1];
 
 function point(angleDeg: number, frac: number): [number, number] {
@@ -70,7 +70,9 @@ export function RepRadar({
       {AXES.map((ax) => {
         const [sx, sy] = point(ax.angle, 1);
         const [lx, ly] = point(ax.angle, 1.28);
-        const anchor = ax.angle === 0 ? "start" : ax.angle === 180 ? "end" : "middle";
+        // Middle-anchor every label so the widest one ("Follow", on the left)
+        // extends only half its width past the vertex and stays inside the SVG,
+        // instead of clipping to "ow"/"Ar".
         return (
           <g key={ax.key}>
             <line
@@ -86,7 +88,7 @@ export function RepRadar({
               x={lx}
               y={ly}
               fontSize={9}
-              textAnchor={anchor}
+              textAnchor="middle"
               dominantBaseline="middle"
               fill="var(--muted-foreground)"
               className="font-mono"
