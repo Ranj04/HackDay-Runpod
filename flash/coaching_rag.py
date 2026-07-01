@@ -74,6 +74,7 @@ async def cited_drill(request: dict) -> dict:
     import json
     import os
     import re
+    import time
 
     import httpx
     from brightdata import BrightDataClient
@@ -107,6 +108,16 @@ async def cited_drill(request: dict) -> dict:
         flaw_label = str(request["request"].get("flaw_label", "")).strip()
     if not flaw_label:
         raise ValueError("flaw_label is required")
+
+    # Phase 4 (observability): structured worker logs carrying the caller's
+    # request ID. Failures raise and land in the platform logs with a traceback;
+    # this start line ties that traceback back to the originating server request.
+    request_id = str(request.get("request_id", "") or "")
+    _started = time.time()
+    print(
+        json.dumps({"event": "rag.start", "request_id": request_id, "flaw_label": flaw_label}),
+        flush=True,
+    )
 
     queries = {
         "elbow_flare": (
@@ -308,6 +319,17 @@ async def cited_drill(request: dict) -> dict:
         for row in rows
         if row.get("similarity") is not None
     ]
+    print(
+        json.dumps({
+            "event": "rag.done",
+            "request_id": request_id,
+            "flaw_label": flaw_label,
+            "retrieval": retrieval_mode,
+            "sources": len(sources),
+            "duration_ms": round((time.time() - _started) * 1000.0, 1),
+        }),
+        flush=True,
+    )
     return {
         "flaw_label": flaw_label,
         "summary": str(generated.get("summary") or "").strip(),

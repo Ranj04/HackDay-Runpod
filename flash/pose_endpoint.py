@@ -62,6 +62,7 @@ async def pose(clip: dict) -> dict:
     """One clip -> per-frame COCO-17 keypoints. `clip` = {clip_url|clip_b64, rep_id, stride?, debug?}."""
     # Only the function body ships to the worker — import everything here (skill gotcha #1).
     import base64
+    import json
     import tempfile
     import urllib.request
 
@@ -102,6 +103,15 @@ async def pose(clip: dict) -> dict:
     rep_id = clip.get("rep_id", "r1")
     stride = int(clip.get("stride", 1))  # process every Nth frame (1 = all)
     debug = bool(clip.get("debug", False))  # return one annotated frame (base64 PNG)
+
+    # Phase 4 (observability): structured worker logs carrying the caller's
+    # request ID, so a failed run traces from the Next server into this worker.
+    request_id = str(clip.get("request_id", "") or "")
+    _started = time.time()
+    print(
+        json.dumps({"event": "pose.start", "request_id": request_id, "rep_id": rep_id, "stride": stride}),
+        flush=True,
+    )
 
     # Materialize the clip to a local file on the worker.
     path = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False).name
@@ -178,6 +188,18 @@ async def pose(clip: dict) -> dict:
                             debug_png = f"draw_error: {exc}"
         idx += 1
     cap.release()
+
+    print(
+        json.dumps({
+            "event": "pose.done",
+            "request_id": request_id,
+            "rep_id": rep_id,
+            "frames": len(frames),
+            "duration_ms": round((time.time() - _started) * 1000.0, 1),
+            "model_load_ms": round(_model_load_ms, 1),
+        }),
+        flush=True,
+    )
 
     return {
         "rep_id": rep_id,

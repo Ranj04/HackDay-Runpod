@@ -11,6 +11,7 @@ import {
   type Flaw,
   type ShotCapture,
 } from "@/lib/contracts";
+import { captureError, currentRequestId, log, recordTiming } from "@/lib/obs";
 
 const MAX_FLASH_CLIP_BYTES = 7_000_000;
 const DEFAULT_DEV_BASE = "http://127.0.0.1:8888";
@@ -70,7 +71,12 @@ function normalizeRunpodUrl(url: string, kind: "pose" | "rag" | "rank"): string 
   return trimmed;
 }
 
-async function postJson(url: string, body: unknown, timeoutMs: number) {
+async function postJson(
+  kind: "pose" | "rag" | "rank",
+  url: string,
+  body: unknown,
+  timeoutMs: number,
+) {
   const headers: Record<string, string> = {
     "content-type": "application/json",
   };
@@ -78,17 +84,42 @@ async function postJson(url: string, body: unknown, timeoutMs: number) {
     headers.authorization = `Bearer ${process.env.RUNPOD_API_KEY}`;
   }
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-    cache: "no-store",
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  if (!response.ok) {
-    throw new Error(`Flash request failed (${response.status})`);
+  // Phase 4 (observability): every outbound Flash call is timed and logged under
+  // the caller's request ID, so a slow or failed run names the exact dependency.
+  const startedAt = Date.now();
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      cache: "no-store",
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    const durationMs = Date.now() - startedAt;
+    recordTiming(`flash.${kind}`, durationMs, response.ok);
+    if (!response.ok) {
+      log("error", "flash.call_failed", {
+        kind,
+        host: new URL(url).host,
+        status: response.status,
+        durationMs,
+      });
+      throw new Error(`Flash request failed (${response.status})`);
+    }
+    log("info", "flash.call", { kind, host: new URL(url).host, durationMs });
+    return response.json();
+  } catch (caught) {
+    if (!(caught instanceof Error && caught.message.startsWith("Flash request failed"))) {
+      // Network error / timeout — the fetch never got a status to log above.
+      recordTiming(`flash.${kind}`, Date.now() - startedAt, false);
+      captureError("flash.call_errored", caught, {
+        kind,
+        host: new URL(url).host,
+        durationMs: Date.now() - startedAt,
+      });
+    }
+    throw caught;
   }
-  return response.json();
 }
 
 export function hasFlashRag(): boolean {
@@ -163,6 +194,7 @@ export async function poseClipOnGpu(
 
   const encoded = Buffer.from(await clip.arrayBuffer()).toString("base64");
   const raw = await postJson(
+    "pose",
     endpointUrl("pose"),
     {
       input: {
@@ -170,6 +202,8 @@ export async function poseClipOnGpu(
           clip_b64: encoded,
           rep_id: fallback.id,
           stride: 2,
+          // Phase 4: correlates the worker's log lines with this server request.
+          request_id: currentRequestId(),
         },
       },
     },
@@ -196,10 +230,15 @@ export async function retrieveCitedDrill(
   flaw: Flaw,
 ): Promise<CoachingResult> {
   const raw = await postJson(
+    "rag",
     endpointUrl("rag"),
     // `auth` is the shared secret the load-balanced RAG worker checks (server-only
     // env, never exposed to the browser). Empty when unset -> worker fails open.
-    { flaw_label: flaw.id, auth: process.env.FLASH_SHARED_SECRET ?? "" },
+    {
+      flaw_label: flaw.id,
+      auth: process.env.FLASH_SHARED_SECRET ?? "",
+      request_id: currentRequestId(),
+    },
     10_000, // coaching has a curated fallback — fail fast, don't hang the UI
   );
   const output = RagOutputSchema.parse(raw?.output ?? raw);
@@ -215,6 +254,7 @@ export async function rankClipsOnFlash(
   clips: Array<Record<string, unknown>>,
 ): Promise<FlashRankReport> {
   const raw = await postJson(
+    "rank",
     endpointUrl("rank"),
     { clips, attach_drills: false },
     600_000,

@@ -10,6 +10,8 @@ import { curatedFor } from "@/lib/coach/curated";
 import { templateSummary } from "@/lib/coach/nebius";
 import { hasFlashRank, rankClipsOnFlash } from "@/lib/flash/client";
 import { checkRateLimit } from "@/lib/db/supabase-admin";
+import { captureError, log, withRequestContext } from "@/lib/obs";
+import { randomUUID } from "node:crypto";
 import type { CoachedRep, CoachedReport, RankReport } from "@/lib/sample-report";
 
 const FLAW_LABELS: Record<string, string> = {
@@ -79,7 +81,13 @@ export async function buildReport(
           12_000,
         );
         return { ...rep, coaching };
-      } catch {
+      } catch (caught) {
+        // Curated fallback keeps the report rendering; the miss stays visible.
+        log("warn", "report.coaching_fallback", {
+          repId: rep.rep_id,
+          flawLabel: rep.flaw_label,
+          reason: caught instanceof Error ? caught.message : String(caught),
+        });
         return { ...rep, coaching: curatedCoaching(rep.flaw_label) };
       }
     }),
@@ -97,35 +105,44 @@ export async function buildReport(
  * different clips.
  */
 export async function fetchFanoutReportAction(): Promise<RankReport | null> {
-  if (!hasFlashRank()) return null;
+  // Server actions have no route handler to mint the ID — do it here so the
+  // fan-out's Flash calls and failures all share one traceable request ID.
+  return withRequestContext(randomUUID(), "action:fetchFanoutReport", async () => {
+    if (!hasFlashRank()) return null;
 
-  const urls = (
-    process.env.BATCH_CLIP_URLS ??
-    process.env.BATCH_CLIP_URL ??
-    process.env.CLIP_URL ??
-    ""
-  )
-    .split(",")
-    .map((u) => u.trim())
-    .filter(Boolean)
-    .slice(0, 10);
-  if (urls.length === 0) return null;
+    const urls = (
+      process.env.BATCH_CLIP_URLS ??
+      process.env.BATCH_CLIP_URL ??
+      process.env.CLIP_URL ??
+      ""
+    )
+      .split(",")
+      .map((u) => u.trim())
+      .filter(Boolean)
+      .slice(0, 10);
+    if (urls.length === 0) return null;
 
-  // Coarse safety cap on the expensive Flash fan-out — this action fires on every
-  // /report load, so a reload loop could hammer the GPU endpoint. Fail graceful
-  // (fall back to the sample report) rather than throw when the cap trips.
-  if (!(await checkRateLimit("fanout:global", 60, 60))) return null;
+    // Coarse safety cap on the expensive Flash fan-out — this action fires on every
+    // /report load, so a reload loop could hammer the GPU endpoint. Fail graceful
+    // (fall back to the sample report) rather than throw when the cap trips.
+    if (!(await checkRateLimit("fanout:global", 60, 60))) {
+      log("warn", "report.fanout_rate_limited", { clips: urls.length });
+      return null;
+    }
 
-  const clips = urls.map((clip_url, i) => ({
-    clip_url,
-    rep_id: `r${i + 1}`,
-    stride: 4,
-    nonce: `batch-${i}-${Date.now()}`,
-  }));
+    const clips = urls.map((clip_url, i) => ({
+      clip_url,
+      rep_id: `r${i + 1}`,
+      stride: 4,
+      nonce: `batch-${i}-${Date.now()}`,
+    }));
 
-  try {
-    return await rankClipsOnFlash(clips);
-  } catch {
-    return null;
-  }
+    try {
+      return await rankClipsOnFlash(clips);
+    } catch (caught) {
+      // Null falls back to the sample report; the real failure stays traceable.
+      captureError("report.fanout_failed", caught, { clips: clips.length });
+      return null;
+    }
+  });
 }

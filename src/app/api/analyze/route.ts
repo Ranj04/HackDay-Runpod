@@ -1,6 +1,13 @@
 import { analyzeShot, coachFlaw } from "@/lib/core";
 import { ShotCaptureSchema } from "@/lib/contracts";
 import { poseClipOnGpu } from "@/lib/flash/client";
+import {
+  captureError,
+  log,
+  recordTiming,
+  requestIdFrom,
+  withRequestContext,
+} from "@/lib/obs";
 
 export const runtime = "nodejs";
 
@@ -10,6 +17,23 @@ const MAX_CLIP_BYTES = 10_000_000; // 10 MB
 const CLIP_TYPE_PREFIX = "video/";
 
 export async function POST(request: Request) {
+  // Phase 4 (observability): every response carries x-request-id, and every log
+  // line inside handle() carries the same ID — a failed run is traceable from the
+  // browser's network tab to the server logs to the Flash worker logs.
+  const requestId = requestIdFrom(request);
+  const startedAt = Date.now();
+
+  const response = await withRequestContext(requestId, "/api/analyze", () =>
+    handle(request),
+  );
+
+  recordTiming("/api/analyze", Date.now() - startedAt, response.ok);
+  response.headers.set("x-request-id", requestId);
+  return response;
+}
+
+async function handle(request: Request): Promise<Response> {
+  const startedAt = Date.now();
   try {
     const form = await request.formData();
     const fallbackCapture = ShotCaptureSchema.parse(
@@ -19,12 +43,14 @@ export async function POST(request: Request) {
 
     if (clip instanceof Blob && clip.size > 0) {
       if (clip.size > MAX_CLIP_BYTES) {
+        log("warn", "analyze.rejected", { reason: "clip_too_large", bytes: clip.size });
         return Response.json(
           { error: `Clip too large (${(clip.size / 1e6).toFixed(1)}MB, max 10MB)` },
           { status: 413 },
         );
       }
       if (clip.type && !clip.type.startsWith(CLIP_TYPE_PREFIX)) {
+        log("warn", "analyze.rejected", { reason: "bad_clip_type", clipType: clip.type });
         return Response.json(
           { error: `Unsupported clip type: ${clip.type}` },
           { status: 415 },
@@ -48,6 +74,9 @@ export async function POST(request: Request) {
       } catch (caught) {
         warning =
           caught instanceof Error ? caught.message : "GPU pose request failed";
+        // Degraded, not failed — the browser keypoints still produce a result,
+        // but the GPU miss must be visible, not silent.
+        captureError("analyze.gpu_pose_failed", caught, { clipBytes: clip.size });
       }
     } else {
       warning = "No recorded clip was available for GPU pose";
@@ -55,6 +84,15 @@ export async function POST(request: Request) {
 
     const analysis = await analyzeShot(capture);
     const coaching = await coachFlaw(analysis.topFlaw);
+
+    log("info", "analyze.done", {
+      durationMs: Date.now() - startedAt,
+      compute,
+      gpuMs,
+      modelLoadMs,
+      topFlaw: analysis.topFlaw?.id,
+      degraded: Boolean(warning),
+    });
 
     return Response.json({
       analysis,
@@ -65,6 +103,7 @@ export async function POST(request: Request) {
       warning,
     });
   } catch (caught) {
+    captureError("analyze.failed", caught, { durationMs: Date.now() - startedAt });
     return Response.json(
       {
         error:

@@ -9,6 +9,7 @@ import { CoachingResultSchema } from "../contracts";
 import { curatedFor } from "./curated";
 import { retrieveDrill, retrieveSources, hasLiveRetrieval } from "./retrieval";
 import { generateCoachingNote, templateSummary, hasNebiusKey } from "./nebius";
+import { captureError, log } from "@/lib/obs";
 
 const cache = new Map<string, CoachingResult>();
 
@@ -47,14 +48,17 @@ export const coachFlaw: CoachFlaw = async (flaw): Promise<CoachingResult> => {
       summary = templateSummary(flaw, drill);
       if (hasLiveRetrieval()) source = "live";
     }
-  } catch {
-    // Any live failure -> fully curated, demo-safe.
+  } catch (caught) {
+    // Any live failure -> fully curated, demo-safe. Degraded, not silent: the
+    // fallback must be traceable to the dependency that failed (Phase 4).
+    captureError("coach.live_failed", caught, { flawId: flaw.id });
     drill = curated.drill;
     references = curated.references;
     summary = templateSummary(flaw, drill);
     source = "curated";
   }
 
+  log("info", "coach.done", { flawId: flaw.id, source });
   const result = CoachingResultSchema.parse({ flawId: flaw.id, summary, drill, references });
   cache.set(flaw.id, result);
   lastSource = source;
