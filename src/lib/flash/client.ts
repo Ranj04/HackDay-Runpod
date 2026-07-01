@@ -173,7 +173,9 @@ export async function poseClipOnGpu(
         },
       },
     },
-    180_000,
+    // Cap the wait: allows a GPU cold start (~25-35s) but never hangs for minutes.
+    // If it exceeds this, the caller keeps the instant browser-keypoint result.
+    40_000,
   );
   const output = PoseOutputSchema.parse(raw?.output ?? raw);
   const capture = ShotCaptureSchema.parse({
@@ -196,7 +198,7 @@ export async function retrieveCitedDrill(
   const raw = await postJson(
     endpointUrl("rag"),
     { flaw_label: flaw.id },
-    180_000,
+    10_000, // coaching has a curated fallback — fail fast, don't hang the UI
   );
   const output = RagOutputSchema.parse(raw?.output ?? raw);
   return CoachingResultSchema.parse({

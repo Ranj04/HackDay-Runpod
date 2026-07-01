@@ -35,6 +35,7 @@ type State =
       gpuMs?: number;
       modelLoadMs?: number;
       warning?: string;
+      upgrading?: boolean; // instant browser result shown; GPU pass in flight
     };
 
 export function ResultsClient() {
@@ -49,19 +50,35 @@ export function ResultsClient() {
     const live = loadCapture();
     const capture = live ?? mockShotCapture;
     const clip = live ? loadCapturedClip() : null;
+    let cancelled = false;
 
-    const run = async () => {
-      if (!clip) {
-        const result = await analyzeAndCoach(capture);
-        return {
-          ...result,
-          compute: "browser-fallback" as const,
-          warning: live
-            ? "Video was unavailable; analyzed browser keypoints instead."
-            : undefined,
-        };
-      }
+    // 1) Instant: analyze the browser keypoints we already captured — renders in
+    //    ~1s instead of blocking on a cold GPU. The GPU pass then upgrades below.
+    analyzeAndCoach(capture)
+      .then((result) => {
+        if (cancelled) return;
+        setState({
+          phase: "ready",
+          analysis: result.analysis,
+          coaching: result.coaching,
+          live: Boolean(live),
+          clip,
+          compute: "browser-fallback",
+          upgrading: Boolean(clip),
+        });
+      })
+      .catch((caught) => {
+        if (cancelled) return;
+        setState({
+          phase: "error",
+          message:
+            caught instanceof Error ? caught.message : "Could not analyze that shot.",
+        });
+      });
 
+    // 2) Background upgrade: GPU pose on the clip, swapped in when (if) it lands.
+    //    A slow/failed GPU never blocks — the browser result already rendered.
+    if (clip) {
       const form = new FormData();
       form.set("capture", JSON.stringify(capture));
       form.set(
@@ -70,47 +87,45 @@ export function ResultsClient() {
           type: clip.type || "video/webm",
         }),
       );
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        body: form,
-      });
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Could not analyze that shot.");
-      }
-      return {
-        analysis: AnalysisResultSchema.parse(payload.analysis),
-        coaching: CoachingResultSchema.parse(payload.coaching),
-        compute: payload.compute as "flash-gpu" | "browser-fallback",
-        gpuMs:
-          typeof payload.gpuMs === "number" ? payload.gpuMs : undefined,
-        modelLoadMs:
-          typeof payload.modelLoadMs === "number"
-            ? payload.modelLoadMs
-            : undefined,
-        warning:
-          typeof payload.warning === "string" ? payload.warning : undefined,
-      };
-    };
+      fetch("/api/analyze", { method: "POST", body: form })
+        .then(async (response) => {
+          const payload = await response.json().catch(() => null);
+          if (cancelled) return;
+          if (!response.ok || !payload || payload.compute !== "flash-gpu") {
+            setState((prev) =>
+              prev.phase === "ready" ? { ...prev, upgrading: false } : prev,
+            );
+            return;
+          }
+          setState((prev) =>
+            prev.phase === "ready"
+              ? {
+                  ...prev,
+                  analysis: AnalysisResultSchema.parse(payload.analysis),
+                  coaching: CoachingResultSchema.parse(payload.coaching),
+                  compute: "flash-gpu",
+                  gpuMs:
+                    typeof payload.gpuMs === "number" ? payload.gpuMs : undefined,
+                  modelLoadMs:
+                    typeof payload.modelLoadMs === "number"
+                      ? payload.modelLoadMs
+                      : undefined,
+                  upgrading: false,
+                }
+              : prev,
+          );
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setState((prev) =>
+            prev.phase === "ready" ? { ...prev, upgrading: false } : prev,
+          );
+        });
+    }
 
-    run()
-      .then((result) =>
-        setState({
-          phase: "ready",
-          ...result,
-          live: Boolean(live),
-          clip,
-        }),
-      )
-      .catch((caught) =>
-        setState({
-          phase: "error",
-          message:
-            caught instanceof Error
-              ? caught.message
-              : "Could not analyze that shot.",
-        }),
-      );
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (state.phase === "loading") {
@@ -146,10 +161,16 @@ export function ResultsClient() {
       )}
       {state.live && (
         <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-muted-foreground">
-          {state.compute === "flash-gpu"
-            ? `RunPod Flash GPU${state.gpuMs ? ` · ${(state.gpuMs / 1000).toFixed(1)}s` : ""}`
-            : "Browser analysis fallback"}
-          {state.warning ? ` · ${state.warning}` : ""}
+          {state.upgrading ? (
+            <>
+              <LoaderCircle className="size-3 animate-spin" /> Verifying on RunPod GPU…
+            </>
+          ) : state.compute === "flash-gpu" ? (
+            `RunPod Flash GPU${state.gpuMs ? ` · ${(state.gpuMs / 1000).toFixed(1)}s` : ""}`
+          ) : (
+            "Browser analysis"
+          )}
+          {!state.upgrading && state.warning ? ` · ${state.warning}` : ""}
         </p>
       )}
       <ResultsView
