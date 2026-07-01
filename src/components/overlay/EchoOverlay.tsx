@@ -60,6 +60,26 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
   const flawKeys = useMemo(() => (flawJoint ? flawConnectionKeys(flawJoint) : new Set<string>()), [flawJoint]);
   const shootWrist = `${side}_wrist`;
 
+  // End playback on the follow-through apex (highest shooting wrist just after
+  // release) + a short hold — never on trailing frames (post-shot landing/
+  // relaxing or noisy tracking), which is what made the loop settle on a jumbled
+  // "ending" pose. The apex is searched only within a short post-release window
+  // so a later arm-raise while walking off can't be mistaken for the apex.
+  const playEnd = useMemo(() => {
+    if (total === 0) return 0;
+    const searchEnd = Math.min(total - 1, releaseIndex + Math.round(0.8 * fps));
+    let apexIdx = releaseIndex;
+    let apexY = Infinity;
+    for (let i = releaseIndex; i <= searchEnd; i++) {
+      const k = frames[i].keypoints.find((p) => p.name === shootWrist);
+      if (k && k.y < apexY) {
+        apexY = k.y;
+        apexIdx = i;
+      }
+    }
+    return Math.min(total - 1, apexIdx + Math.round(0.15 * fps));
+  }, [frames, total, releaseIndex, fps, shootWrist]);
+
   const [playing, setPlaying] = useState(true);
   const [index, setIndex] = useState(0);
   const playingRef = useRef(playing);
@@ -199,18 +219,18 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
       raf = requestAnimationFrame(tick);
       const dt = Math.min(100, now - last);
       last = now;
-      if (total > 0 && posRef.current > total - 1) {
-        posRef.current = total - 1;
+      if (total > 0 && posRef.current > playEnd) {
+        posRef.current = playEnd;
       }
       if (playingRef.current) {
-        if (posRef.current >= total - 1) {
+        if (posRef.current >= playEnd) {
           holding += dt;
           if (holding >= HOLD_MS) {
             posRef.current = 0;
             holding = 0;
           }
         } else {
-          posRef.current = Math.min(total - 1, posRef.current + (dt / 1000) * fps * SPEED);
+          posRef.current = Math.min(playEnd, posRef.current + (dt / 1000) * fps * SPEED);
         }
       }
       const idx = Math.round(posRef.current);
@@ -231,10 +251,10 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
     }
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [result, frames, echoFrames, total, fps, releaseIndex, flawKeys, flawJoint, shootWrist, fit, width, height]);
+  }, [result, frames, echoFrames, total, fps, releaseIndex, playEnd, flawKeys, flawJoint, shootWrist, fit, width, height]);
 
-  const releasePct = total > 1 ? (releaseIndex / (total - 1)) * 100 : 0;
-  const posPct = total > 1 ? (index / (total - 1)) * 100 : 0;
+  const releasePct = playEnd > 0 ? (Math.min(releaseIndex, playEnd) / playEnd) * 100 : 0;
+  const posPct = playEnd > 0 ? (Math.min(index, playEnd) / playEnd) * 100 : 0;
 
   return (
     <div className={className} style={compact ? undefined : { width }}>
