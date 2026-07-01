@@ -8,7 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ProgressView } from "@/components/results";
 import {
-  isInsForgeConfigured,
+  isSupabaseConfigured,
   loadSessions,
   type EchoSession,
   type PersistenceMode,
@@ -31,10 +31,10 @@ export function HistoryDashboard() {
   useEffect(() => {
     let active = true;
 
-    // InsForge auth lives in cookies the browser SDK can't refresh on a cold
+    // Supabase auth lives in cookies the browser SDK can't refresh on a cold
     // load, so read account history through a Server Action. Local-demo mode
-    // (no InsForge) still loads from localStorage on the client.
-    const load = isInsForgeConfigured() ? loadSessionsAction() : loadSessions();
+    // (no Supabase) still loads from localStorage on the client.
+    const load = isSupabaseConfigured() ? loadSessionsAction() : loadSessions();
 
     load
       .then((result) => {
@@ -72,10 +72,10 @@ export function HistoryDashboard() {
     );
   }
 
-  if (state.mode === "insforge" && !state.userEmail) {
+  if (state.mode === "supabase" && !state.userEmail) {
     return (
       <EmptyState
-        body="Sign in to load your saved InsForge sessions and progress."
+        body="Sign in to load your saved Supabase sessions and progress."
         href="/auth?next=/history"
         linkLabel="Sign in"
         title="Your history is account-backed."

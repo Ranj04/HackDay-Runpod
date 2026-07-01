@@ -47,12 +47,12 @@ export function ProgressView({
           </h1>
         </div>
         <Badge className="h-7 gap-1.5 bg-muted text-foreground ring-1 ring-border">
-          {mode === "insforge" ? (
+          {mode === "supabase" ? (
             <Cloud className="size-3.5 text-primary" />
           ) : (
             <HardDrive className="size-3.5 text-primary" />
           )}
-          {mode === "insforge" ? "InsForge synced" : "Local demo mode"}
+          {mode === "supabase" ? "Supabase synced" : "Local demo mode"}
         </Badge>
       </div>
 

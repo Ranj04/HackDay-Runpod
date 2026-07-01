@@ -3,8 +3,8 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 
 // Server-only Supabase admin client (service role) for storage writes. Auth is
-// still InsForge until Phase 3, so uploads run with the service key (bypassing
-// Storage RLS); the echo-runs bucket is public for stable, renderable URLs.
+// Uploads run with the service key (bypassing Storage RLS); the echo-runs
+// bucket is public for stable, renderable URLs.
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BUCKET = "echo-runs";

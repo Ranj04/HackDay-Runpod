@@ -12,8 +12,8 @@ export default async function AuthPage({
 }) {
   const { next = "/capture" } = await searchParams;
   const configured = Boolean(
-    process.env.NEXT_PUBLIC_INSFORGE_URL &&
-      process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   );
 
   return (
@@ -34,7 +34,7 @@ export default async function AuthPage({
           </p>
           <p className="flex items-center gap-3">
             <Cloud className="size-5 text-primary" />
-            InsForge-backed player history
+            Supabase-backed player history
           </p>
         </div>
       </section>
@@ -43,7 +43,7 @@ export default async function AuthPage({
         <CardContent className="p-5 sm:p-7">
           {!configured && (
             <div className="mb-5 rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm leading-6 text-warning">
-              InsForge credentials are not configured in this environment.
+              Supabase credentials are not configured in this environment.
               Account actions are disabled; you can still use the{" "}
               <Link className="font-semibold underline" href="/results">
                 local demo flow

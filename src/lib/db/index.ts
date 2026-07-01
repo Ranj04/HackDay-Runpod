@@ -1,9 +1,8 @@
 export {
   getPersistenceMode,
-  isInsForgeConfigured,
+  isSupabaseConfigured,
   loadSessions,
   saveSession,
-  uploadRunArtifacts,
 } from "./sessions";
 export {
   EchoSessionSchema,

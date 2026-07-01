@@ -42,7 +42,7 @@ export interface RankCost {
   reps?: number;
   // Phase 4 additions (B-side observability).
   brightdata_requests?: number;
-  insforge_rows?: number;
+  supabase_rows?: number;
 }
 
 export interface RankReport {
@@ -82,7 +82,7 @@ export const sampleReport: RankReport = {
     workers: 5,
     reps: 5,
     brightdata_requests: 12,
-    insforge_rows: 47,
+    supabase_rows: 47,
   },
   // Fan-out timing (seconds from batch start). Staggered starts = workers
   // scaling 0->5; overlapping intervals = real parallel GPU execution.

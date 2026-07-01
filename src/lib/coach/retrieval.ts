@@ -1,4 +1,4 @@
-// Flash-served coaching RAG: InsForge pgvector first, Bright Data live fallback.
+// Flash-served coaching RAG: Supabase pgvector first, Bright Data live fallback.
 import type { CoachingResult, Drill, Flaw, Reference } from "../contracts";
 import { hasFlashRag, retrieveCitedDrill } from "../flash/client";
 import { buildQuery } from "./queries";

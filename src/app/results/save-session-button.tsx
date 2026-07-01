@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import type { AnalysisResult, CoachingResult } from "@/lib/contracts";
-import { getPersistenceMode, isInsForgeConfigured, saveSession } from "@/lib/db";
+import { getPersistenceMode, isSupabaseConfigured, saveSession } from "@/lib/db";
 import { saveCompleteSessionAction } from "@/lib/db/server";
 
 export function SaveSessionButton({
@@ -34,7 +34,7 @@ export function SaveSessionButton({
     setError(undefined);
 
     try {
-      if (isInsForgeConfigured()) {
+      if (isSupabaseConfigured()) {
         const form = new FormData();
         form.set("analysis", JSON.stringify(analysis));
         form.set("coaching", JSON.stringify(coaching));
@@ -78,13 +78,13 @@ export function SaveSessionButton({
         <ChevronRight className="size-4" />
       </Button>
       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        {mode === "insforge" ? (
+        {mode === "supabase" ? (
           <Cloud className="size-3" />
         ) : (
           <HardDrive className="size-3" />
         )}
-        {mode === "insforge"
-          ? "Saved securely with InsForge"
+        {mode === "supabase"
+          ? "Saved securely with Supabase"
           : "Local demo storage"}
       </span>
       {error && (

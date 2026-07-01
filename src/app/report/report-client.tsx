@@ -1,15 +1,15 @@
 "use client";
 
 // Renders the fan-out SHARED CONTRACT as a worst-first ranked report. Prefers a
-// report persisted in InsForge (proving persist + reload); otherwise enriches the
-// mock contract with cited drills. Signed-in users can save a run to InsForge.
+// report persisted in Supabase (proving persist + reload); otherwise enriches the
+// mock contract with cited drills. Signed-in users can save a run to Supabase.
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, Cloud, HardDrive, LoaderCircle } from "lucide-react";
 
 import { RankedReport } from "@/components/results/ranked-report";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { getPersistenceMode, isInsForgeConfigured } from "@/lib/db";
+import { getPersistenceMode, isSupabaseConfigured } from "@/lib/db";
 import { loadLatestReportAction, saveReportAction } from "@/lib/db/server";
 import { sampleReport, type CoachedReport } from "@/lib/sample-report";
 import { cn } from "@/lib/utils";
@@ -30,7 +30,7 @@ export function ReportClient() {
   async function load() {
     setState({ phase: "loading" });
     try {
-      const saved = isInsForgeConfigured() ? await loadLatestReportAction() : null;
+      const saved = isSupabaseConfigured() ? await loadLatestReportAction() : null;
       if (saved && saved.reps?.length) {
         setState({ phase: "ready", report: saved, persisted: true });
       } else {
@@ -55,7 +55,7 @@ export function ReportClient() {
     setSaveError(undefined);
     try {
       await saveReportAction(state.report);
-      await load(); // reload from InsForge — now served from persistence
+      await load(); // reload from Supabase — now served from persistence
     } catch (caught) {
       if (caught instanceof Error && caught.message === "AUTH_REQUIRED") {
         window.location.href = "/auth?next=/report";
@@ -91,7 +91,7 @@ export function ReportClient() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <p className="text-sm text-muted-foreground">
           {state.persisted
-            ? "Loaded from InsForge — your last saved run."
+            ? "Loaded from Supabase — your last saved run."
             : "Live fan-out report (mock contract until integration)."}
         </p>
         {!state.persisted ? (
@@ -109,8 +109,8 @@ export function ReportClient() {
       <RankedReport report={state.report} />
 
       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        {mode === "insforge" ? <Cloud className="size-3" /> : <HardDrive className="size-3" />}
-        {mode === "insforge" ? "Persists to InsForge (RLS-scoped per user)" : "Local demo storage"}
+        {mode === "supabase" ? <Cloud className="size-3" /> : <HardDrive className="size-3" />}
+        {mode === "supabase" ? "Persists to Supabase (RLS-scoped per user)" : "Local demo storage"}
       </span>
       {saveError ? (
         <p aria-live="polite" className="text-xs text-destructive">

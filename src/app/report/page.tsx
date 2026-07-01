@@ -11,7 +11,7 @@ export default function ReportPage() {
         <p className="mt-3 max-w-2xl text-muted-foreground">
           Every clip scored in parallel on Runpod Flash GPU workers, ranked
           worst-first — each flaw paired with a cited drill retrieved from
-          InsForge pgvector.
+          Supabase pgvector.
         </p>
       </div>
       <ReportClient />

@@ -1,20 +1,10 @@
-import { NextResponse, type NextRequest } from "next/server";
-import {
-  updateSession,
-  type CookieStore,
-} from "@insforge/sdk/ssr/middleware";
+import { type NextRequest } from "next/server";
 
-// Refreshes the InsForge access-token cookie before Server Components and
-// Server Actions read it, keeping browser and server cookies aligned.
+import { updateSupabaseSession } from "@/lib/supabase/middleware";
+
+// Refreshes the Supabase auth cookies before Server Components / Actions read them.
 export async function proxy(request: NextRequest) {
-  const response = NextResponse.next({ request });
-
-  await updateSession({
-    requestCookies: request.cookies as unknown as CookieStore,
-    responseCookies: response.cookies as unknown as CookieStore,
-  });
-
-  return response;
+  return updateSupabaseSession(request);
 }
 
 export const config = {

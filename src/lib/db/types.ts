@@ -26,7 +26,7 @@ export const EchoSessionSchema = z.object({
 });
 
 export type EchoSession = z.infer<typeof EchoSessionSchema>;
-export type PersistenceMode = "insforge" | "local-demo";
+export type PersistenceMode = "supabase" | "local-demo";
 
 export const RunArtifactsSchema = EchoSessionSchema.pick({
   report: true,

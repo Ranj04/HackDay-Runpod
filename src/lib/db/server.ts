@@ -1,8 +1,5 @@
 "use server";
 
-import { createServerClient } from "@insforge/sdk/ssr";
-import { cookies } from "next/headers";
-
 import {
   AnalysisResultSchema,
   CoachingResultSchema,
@@ -10,6 +7,7 @@ import {
   type CoachingResult,
 } from "@/lib/contracts";
 import type { CoachedReport } from "@/lib/sample-report";
+import { getServerSupabase, isSupabaseConfigured } from "@/lib/supabase/server";
 
 import { uploadArtifact } from "./supabase-admin";
 
@@ -20,21 +18,6 @@ import {
   type PersistenceMode,
   type RunArtifacts,
 } from "./types";
-
-function configured() {
-  return Boolean(
-    process.env.NEXT_PUBLIC_INSFORGE_URL &&
-      process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY,
-  );
-}
-
-async function client() {
-  return createServerClient({
-    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL,
-    anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY,
-    cookies: await cookies(),
-  });
-}
 
 type ComputeMeta = {
   provider: "flash-gpu" | "browser-fallback";
@@ -100,13 +83,12 @@ async function uploadRunArtifactsServer(
 
 /**
  * Persists a completed analysis for the signed-in user. Accepts FormData so
- * clip bytes and auth both flow through the server (browser InsForge client
- * cannot read httpOnly session cookies for storage upload).
+ * clip bytes and auth both flow through the server session.
  */
 export async function saveCompleteSessionAction(
   formData: FormData,
 ): Promise<EchoSession> {
-  if (!configured()) {
+  if (!isSupabaseConfigured()) {
     throw new Error("AUTH_REQUIRED");
   }
 
@@ -121,9 +103,9 @@ export async function saveCompleteSessionAction(
   const clip =
     clipEntry instanceof Blob && clipEntry.size > 0 ? clipEntry : null;
 
-  const insforge = await client();
+  const supabase = await getServerSupabase();
   const { data: authData, error: authError } =
-    await insforge.auth.getCurrentUser();
+    await supabase.auth.getUser();
   if (authError) {
     throw new Error(authError.message);
   }
@@ -149,32 +131,30 @@ export async function saveCompleteSessionAction(
 }
 
 /**
- * Loads the signed-in user's sessions on the server, where the
- * `insforge_access_token` cookie is available as a bearer token. This avoids
- * the browser SDK's cold-load refresh path, which fails on localhost because
- * the httpOnly refresh cookie is never sent cross-origin to the InsForge API.
+ * Loads the signed-in user's sessions on the server, where the Supabase
+ * session cookie is available (refreshed by the middleware).
  */
 export async function loadSessionsAction(): Promise<{
   sessions: EchoSession[];
   mode: PersistenceMode;
   userEmail?: string;
 }> {
-  if (!configured()) {
+  if (!isSupabaseConfigured()) {
     return { sessions: [], mode: "local-demo" };
   }
 
-  const insforge = await client();
+  const supabase = await getServerSupabase();
 
   const { data: authData, error: authError } =
-    await insforge.auth.getCurrentUser();
+    await supabase.auth.getUser();
   if (authError) {
     throw new Error(authError.message);
   }
   if (!authData.user) {
-    return { sessions: [], mode: "insforge" };
+    return { sessions: [], mode: "supabase" };
   }
 
-  const { data, error } = await insforge.database
+  const { data, error } = await supabase
     .from("echo_sessions")
     .select("*")
     .eq("user_id", authData.user.id)
@@ -187,7 +167,7 @@ export async function loadSessionsAction(): Promise<{
 
   return {
     sessions: EchoSessionSchema.array().parse(data ?? []),
-    mode: "insforge",
+    mode: "supabase",
     userEmail: authData.user.email,
   };
 }
@@ -202,14 +182,14 @@ export async function saveSessionAction(
   coaching: CoachingResult,
   artifactInput?: RunArtifacts,
 ): Promise<EchoSession> {
-  if (!configured()) {
+  if (!isSupabaseConfigured()) {
     throw new Error("AUTH_REQUIRED");
   }
 
-  const insforge = await client();
+  const supabase = await getServerSupabase();
 
   const { data: authData, error: authError } =
-    await insforge.auth.getCurrentUser();
+    await supabase.auth.getUser();
   if (authError) {
     throw new Error(authError.message);
   }
@@ -233,7 +213,7 @@ export async function saveSessionAction(
     ...artifacts,
   });
 
-  const { data, error } = await insforge.database
+  const { data, error } = await supabase
     .from("echo_sessions")
     .insert([session])
     .select()
@@ -268,11 +248,11 @@ const FALLBACK_COACHING: CoachingResult = {
  * run also shows up in history.
  */
 export async function saveReportAction(report: CoachedReport): Promise<EchoSession> {
-  if (!configured()) {
+  if (!isSupabaseConfigured()) {
     throw new Error("AUTH_REQUIRED");
   }
-  const insforge = await client();
-  const { data: authData, error: authError } = await insforge.auth.getCurrentUser();
+  const supabase = await getServerSupabase();
+  const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError) {
     throw new Error(authError.message);
   }
@@ -296,7 +276,7 @@ export async function saveReportAction(report: CoachedReport): Promise<EchoSessi
     report,
   });
 
-  const { data, error } = await insforge.database
+  const { data, error } = await supabase
     .from("echo_sessions")
     .insert([session])
     .select()
@@ -309,11 +289,11 @@ export async function saveReportAction(report: CoachedReport): Promise<EchoSessi
 
 /** Loads the signed-in user's most recent persisted report (for reload). */
 export async function loadLatestReportAction(): Promise<CoachedReport | null> {
-  if (!configured()) {
+  if (!isSupabaseConfigured()) {
     return null;
   }
-  const insforge = await client();
-  const { data: authData, error: authError } = await insforge.auth.getCurrentUser();
+  const supabase = await getServerSupabase();
+  const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError) {
     throw new Error(authError.message);
   }
@@ -321,7 +301,7 @@ export async function loadLatestReportAction(): Promise<CoachedReport | null> {
     return null;
   }
 
-  const { data, error } = await insforge.database
+  const { data, error } = await supabase
     .from("echo_sessions")
     .select("report, created_at")
     .eq("user_id", authData.user.id)
