@@ -94,10 +94,10 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
     posRef.current = 0;
   }, [result.capture.id, total]);
 
-  // In the full results view, place the echo to the RIGHT of the player as a
-  // clean side-by-side "you vs ideal" instead of superimposed (which tangles the
-  // two figures). The compact hero keeps them overlaid — that's the "ghost" look.
-  const sideBySide = !compact && echoFrames.length > 0;
+  // Place the echo to the RIGHT of the player as a clean side-by-side "you vs
+  // ideal" instead of superimposed (which tangles the two figures) — everywhere,
+  // including the compact landing hero, so Shot 01's echo matches the results.
+  const sideBySide = echoFrames.length > 0;
 
   // Stable fit transform (centers + scales) from all visible poses, accounting
   // for the echo's horizontal shift so both figures fit and stay centered.
