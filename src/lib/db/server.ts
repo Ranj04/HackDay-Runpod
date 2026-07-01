@@ -11,6 +11,8 @@ import {
 } from "@/lib/contracts";
 import type { CoachedReport } from "@/lib/sample-report";
 
+import { uploadArtifact } from "./supabase-admin";
+
 import {
   EchoSessionSchema,
   RunArtifactsSchema,
@@ -40,9 +42,8 @@ type ComputeMeta = {
   modelLoadMs?: number;
 };
 
-/** Uploads clip/keypoints/report to InsForge storage using the server session. */
+/** Uploads clip/keypoints/report to Supabase Storage (service-role). */
 async function uploadRunArtifactsServer(
-  insforge: Awaited<ReturnType<typeof client>>,
   userId: string,
   analysis: AnalysisResult,
   coaching: CoachingResult,
@@ -67,18 +68,7 @@ async function uploadRunArtifactsServer(
     coaching,
   };
 
-  const upload = async (key: string, body: Blob) => {
-    const { data, error } = await insforge.storage
-      .from("echo-runs")
-      .upload(key, body);
-    if (error) {
-      throw new Error(error.message);
-    }
-    if (!data?.url || !data.key) {
-      throw new Error(`Storage upload returned no artifact reference for ${key}`);
-    }
-    return data;
-  };
+  const upload = (key: string, body: Blob) => uploadArtifact(key, body);
 
   const keypoints = await upload(
     `${prefix}/keypoints.json`,
@@ -144,7 +134,6 @@ export async function saveCompleteSessionAction(
   let artifacts: RunArtifacts | undefined;
   try {
     artifacts = await uploadRunArtifactsServer(
-      insforge,
       authData.user.id,
       analysis,
       coaching,
