@@ -9,7 +9,7 @@ import {
 import type { CoachedReport } from "@/lib/sample-report";
 import { getServerSupabase, isSupabaseConfigured } from "@/lib/supabase/server";
 
-import { uploadArtifact } from "./supabase-admin";
+import { checkRateLimit, uploadArtifact } from "./supabase-admin";
 
 import {
   EchoSessionSchema,
@@ -201,6 +201,10 @@ export async function saveSessionAction(
   if (!authData.user) {
     throw new Error("AUTH_REQUIRED");
   }
+  // Per-user rate limit on the write path (30 saves / minute).
+  if (!(await checkRateLimit(`save:${authData.user.id}`, 30, 60))) {
+    throw new Error("RATE_LIMITED");
+  }
   const artifacts = artifactInput
     ? RunArtifactsSchema.parse(artifactInput)
     : undefined;
@@ -263,6 +267,10 @@ export async function saveReportAction(report: CoachedReport): Promise<EchoSessi
   }
   if (!authData.user) {
     throw new Error("AUTH_REQUIRED");
+  }
+  // Per-user rate limit on the write path (30 saves / minute).
+  if (!(await checkRateLimit(`save:${authData.user.id}`, 30, 60))) {
+    throw new Error("RATE_LIMITED");
   }
 
   const worst = report.reps.find((r) => r.rep_id === report.worst[0]) ?? report.reps[0];

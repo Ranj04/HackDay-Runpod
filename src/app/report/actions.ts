@@ -9,6 +9,7 @@ import { CoachingResultSchema } from "@/lib/contracts";
 import { curatedFor } from "@/lib/coach/curated";
 import { templateSummary } from "@/lib/coach/nebius";
 import { hasFlashRank, rankClipsOnFlash } from "@/lib/flash/client";
+import { checkRateLimit } from "@/lib/db/supabase-admin";
 import type { CoachedRep, CoachedReport, RankReport } from "@/lib/sample-report";
 
 const FLAW_LABELS: Record<string, string> = {
@@ -109,6 +110,11 @@ export async function fetchFanoutReportAction(): Promise<RankReport | null> {
     .filter(Boolean)
     .slice(0, 10);
   if (urls.length === 0) return null;
+
+  // Coarse safety cap on the expensive Flash fan-out — this action fires on every
+  // /report load, so a reload loop could hammer the GPU endpoint. Fail graceful
+  // (fall back to the sample report) rather than throw when the cap trips.
+  if (!(await checkRateLimit("fanout:global", 60, 60))) return null;
 
   const clips = urls.map((clip_url, i) => ({
     clip_url,

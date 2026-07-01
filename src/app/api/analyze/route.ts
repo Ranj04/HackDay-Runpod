@@ -4,6 +4,11 @@ import { poseClipOnGpu } from "@/lib/flash/client";
 
 export const runtime = "nodejs";
 
+// Upload limits — reject invalid/oversized clips with a clean 4xx rather than
+// silently degrading or forwarding junk to the GPU worker.
+const MAX_CLIP_BYTES = 10_000_000; // 10 MB
+const CLIP_TYPE_PREFIX = "video/";
+
 export async function POST(request: Request) {
   try {
     const form = await request.formData();
@@ -11,6 +16,21 @@ export async function POST(request: Request) {
       JSON.parse(String(form.get("capture") ?? "")),
     );
     const clip = form.get("clip");
+
+    if (clip instanceof Blob && clip.size > 0) {
+      if (clip.size > MAX_CLIP_BYTES) {
+        return Response.json(
+          { error: `Clip too large (${(clip.size / 1e6).toFixed(1)}MB, max 10MB)` },
+          { status: 413 },
+        );
+      }
+      if (clip.type && !clip.type.startsWith(CLIP_TYPE_PREFIX)) {
+        return Response.json(
+          { error: `Unsupported clip type: ${clip.type}` },
+          { status: 415 },
+        );
+      }
+    }
 
     let capture = fallbackCapture;
     let compute: "flash-gpu" | "browser-fallback" = "browser-fallback";
