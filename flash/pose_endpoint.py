@@ -24,8 +24,19 @@ from runpod_flash import CudaVersion, Endpoint, GpuType, NetworkVolume
 
 @Endpoint(
     name="echo-pose",
-    gpu=GpuType.NVIDIA_GEFORCE_RTX_4090,
-    workers=(0, 5),
+    # Phase 1 (infra, latency-first): GPU priority list (up to 3) for availability —
+    # primary RTX 4090, then comparable 24GB cards. Supply-based auto-switch is only
+    # honored when max workers >= 5 (skill gotcha #8), which holds here.
+    gpu=[
+        GpuType.NVIDIA_GEFORCE_RTX_4090,
+        GpuType.NVIDIA_L4,
+        GpuType.NVIDIA_RTX_A5000,
+    ],
+    # Phase 1: min 1 warm worker + FlashBoot snapshot restore eliminates cold start on
+    # the hot path; burst workers up to 5 scale down after idle_timeout (seconds).
+    workers=(1, 5),
+    flashboot=True,
+    idle_timeout=120,
     min_cuda_version=CudaVersion.V13_0,
     # Phase 5: cache the RTMPose ONNX weights on a NetworkVolume. rtmlib caches
     # under ~/.cache/rtmlib, so point HOME at the mounted volume (/runpod-volume)
@@ -108,10 +119,18 @@ async def pose(clip: dict) -> dict:
     else:
         raise ValueError("clip requires 'clip_url' or 'clip_b64'")
 
-    # RTMPose on GPU (det + pose, COCO-17). Weights download to the NetworkVolume
-    # on the first cold start, then load from cache — model_load_ms shows the win.
+    # RTMPose on GPU (det + pose, COCO-17). Weights download to the NetworkVolume on
+    # the first cold start, then load from cache.
+    # Phase 1 (infra): build the model ONCE per worker and reuse it across requests.
+    # Only the function body ships (skill gotcha #1), so the module namespace created
+    # inside the body is where we cache — `globals()` persists across warm invocations
+    # on a live worker. First (cold) request builds it; warm requests reuse, so
+    # model_load_ms ~= 0 on the hot path — the payoff of the min-1 warm worker.
     _t0 = time.time()
-    model = Body(mode="balanced", backend="onnxruntime", device="cuda")
+    model = globals().get("_ECHO_POSE_MODEL")
+    if model is None:
+        model = Body(mode="balanced", backend="onnxruntime", device="cuda")
+        globals()["_ECHO_POSE_MODEL"] = model
     _model_load_ms = (time.time() - _t0) * 1000.0
 
     cap = cv2.VideoCapture(path)

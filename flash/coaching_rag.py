@@ -31,7 +31,12 @@ rag = Endpoint(
     name="echo-coaching-rag",
     cpu=CpuInstanceType.CPU5C_2_4,
     datacenter=DataCenter.EU_RO_1,
-    workers=(0, 2),
+    # Phase 1 (infra, latency-first): min 1 warm worker + FlashBoot => no cold start on
+    # this real-time RAG path. It stays load-balanced (Endpoint.post routes share one
+    # warm pool, bypassing the queue); the 2nd worker scales down after idle_timeout.
+    workers=(1, 2),
+    flashboot=True,
+    idle_timeout=120,
     max_concurrency=4,
     dependencies=[
         "brightdata-sdk==2.4.0",
