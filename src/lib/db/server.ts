@@ -143,33 +143,38 @@ export async function loadSessionsAction(): Promise<{
     return { sessions: [], mode: "local-demo" };
   }
 
-  const supabase = await getServerSupabase();
+  try {
+    const supabase = await getServerSupabase();
 
-  const { data: authData, error: authError } =
-    await supabase.auth.getUser();
-  if (authError) {
-    throw new Error(authError.message);
-  }
-  if (!authData.user) {
+    // A signed-out visitor: Supabase returns an "Auth session missing" authError
+    // here — that's the empty state, not a failure. Treat any missing user as
+    // signed-out so the dashboard shows its sign-in prompt, never a red error.
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) {
+      return { sessions: [], mode: "supabase" };
+    }
+
+    const { data, error } = await supabase
+      .from("echo_sessions")
+      .select("*")
+      .eq("user_id", authData.user.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      // Query failure -> no rows rather than crashing the whole page.
+      return { sessions: [], mode: "supabase", userEmail: authData.user.email };
+    }
+
+    return {
+      sessions: EchoSessionSchema.array().parse(data ?? []),
+      mode: "supabase",
+      userEmail: authData.user.email,
+    };
+  } catch {
+    // Any Supabase/client failure degrades to the signed-out empty state.
     return { sessions: [], mode: "supabase" };
   }
-
-  const { data, error } = await supabase
-    .from("echo_sessions")
-    .select("*")
-    .eq("user_id", authData.user.id)
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return {
-    sessions: EchoSessionSchema.array().parse(data ?? []),
-    mode: "supabase",
-    userEmail: authData.user.email,
-  };
 }
 
 /**
