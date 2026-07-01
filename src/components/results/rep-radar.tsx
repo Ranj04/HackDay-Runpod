@@ -97,31 +97,35 @@ export function RepRadar({
         );
       })}
 
-      {/* data polygon */}
-      <polygon
-        points={dataPoints.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ")}
-        fill={color}
-        fillOpacity={0.18}
-        stroke={color}
-        strokeWidth={1.75}
-        strokeLinejoin="round"
-      />
-      {dataPoints.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r={2.4} fill={color} />
-      ))}
+      {/* data layer — fades in on mount (snaps to visible under reduced-motion) */}
+      <g style={{ animation: "viz-fade-in 0.6s ease-out both" }}>
+        <polygon
+          points={dataPoints.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ")}
+          fill={color}
+          fillOpacity={0.18}
+          stroke={color}
+          strokeWidth={1.75}
+          strokeLinejoin="round"
+          pathLength={100}
+          style={{ strokeDasharray: 100, animation: "radar-draw 0.8s ease-out both" }}
+        />
+        {dataPoints.map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r={2.4} fill={color} />
+        ))}
 
-      {/* center readout — overall match, reads instantly as "analysis" */}
-      <text
-        x={C}
-        y={C - 1}
-        fontSize={15}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fill="var(--foreground)"
-        className="font-mono font-semibold"
-      >
-        {avg}
-      </text>
+        {/* center readout — overall match, reads instantly as "analysis" */}
+        <text
+          x={C}
+          y={C - 1}
+          fontSize={15}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="var(--foreground)"
+          className="font-mono font-semibold"
+        >
+          {avg}
+        </text>
+      </g>
     </svg>
   );
 }

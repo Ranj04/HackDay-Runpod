@@ -85,6 +85,10 @@ export function FanoutReplay({
     return () => cancelAnimationFrame(raf);
   }, [duration]);
 
+  // Defensive: caller omits us when there's no timing, but never render an empty
+  // shell if a report somehow carries an empty timeline.
+  if (!timeline.length) return null;
+
   const phases = timeline.map((e) => phaseAt(e, now));
   const activeWorkerIds = new Set(
     timeline.filter((_, i) => phases[i] === "processing").map((e) => e.worker_id),
@@ -132,7 +136,7 @@ export function FanoutReplay({
                   <span
                     key={w}
                     className={cn(
-                      "size-2.5 rounded-full transition-colors duration-300",
+                      "size-2.5 rounded-full transition-colors duration-300 ease-out",
                       p === "processing" &&
                         "bg-primary shadow-[0_0_8px_color-mix(in_oklab,var(--primary),transparent_40%)]",
                       p === "done" && "bg-success",
@@ -178,7 +182,7 @@ export function FanoutReplay({
                 <div
                   key={e.rep_id}
                   className={cn(
-                    "absolute h-[6px] rounded-full transition-colors duration-200",
+                    "absolute h-[6px] rounded-full transition-colors duration-200 ease-out",
                     p === "processing" &&
                       "bg-primary shadow-[0_0_8px_color-mix(in_oklab,var(--primary),transparent_50%)]",
                     p === "done" && "bg-success/80",
@@ -217,7 +221,7 @@ function ClipTile({ entry, phase }: { entry: TimelineEntry; phase: Phase }) {
   return (
     <div
       className={cn(
-        "rounded-lg border p-2.5 transition-colors duration-300",
+        "rounded-lg border p-2.5 transition-colors duration-300 ease-out",
         phase === "queued" && "border-border bg-muted/30 text-muted-foreground",
         phase === "processing" &&
           "border-primary/50 bg-primary/10 text-foreground shadow-[0_0_18px_color-mix(in_oklab,var(--primary),transparent_82%)]",
