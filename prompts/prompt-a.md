@@ -2,9 +2,9 @@
 
 **Run after Prompt 0 (cleanup) is done and pushed to `main`.** First: `git checkout main && git pull origin main`.
 
-**You own the Runpod/Flash GPU showcase:** GPU pose estimation → form scoring → parallel fan-out. Your teammate (Prompt B) owns Bright Data, RAG, UI, and **all of Insforge** (the backend). **Do not call Bright Data or Insforge — those are entirely B's domain.** Stay pure compute: take clips in, emit the contract JSON. B persists everything and supplies uploaded clips at integration; use local clips during dev.
+**You own the Runpod/Flash GPU showcase:** GPU pose estimation → form scoring → parallel fan-out. Your teammate (Prompt B) owns Bright Data, RAG, UI, and **all of Supabase** (the backend). **Do not call Bright Data or Supabase — those are entirely B's domain.** Stay pure compute: take clips in, emit the contract JSON. B persists everything and supplies uploaded clips at integration; use local clips during dev.
 
-**Shared-branch rule:** work on `main` alongside B. **Edit only your files:** `flash/pose_endpoint.py`, `flash/scoring.py`, `flash/orchestrate.py`, and `flash/reference/`. Do not edit RAG, frontend, Insforge, or docs — that's B's territory.
+**Shared-branch rule:** work on `main` alongside B. **Edit only your files:** `flash/pose_endpoint.py`, `flash/scoring.py`, `flash/orchestrate.py`, and `flash/reference/`. Do not edit RAG, frontend, Supabase, or docs — that's B's territory.
 
 ---
 
@@ -67,4 +67,4 @@ Output the SHARED CONTRACT JSON exactly. Stub B's drill lookup (fake cited drill
 **verify:** each independently; cost numbers update per run.
 
 ## Integration (DO WITH TEAMMATE)
-Both streams are already on `main`. Replace your RAG mock with B's real Flash endpoint, run end-to-end on real clips (B supplies uploaded clips from Insforge storage), **pre-warm all endpoints before demoing**.
+Both streams are already on `main`. Replace your RAG mock with B's real Flash endpoint, run end-to-end on real clips (B supplies uploaded clips from Supabase storage), **pre-warm all endpoints before demoing**.

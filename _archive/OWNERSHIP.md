@@ -15,7 +15,7 @@ PERSON A (Ranjiv) — works on main — owns:
 
 PERSON B (Partner) — works on main — owns:
   src/app/**             (routing, pages, layout)
-  src/lib/db/**          (InsForge auth + persistence)
+  src/lib/db/**          (Supabase auth + persistence)
   src/lib/payments/**    (Kite PvP stake)
   src/lib/deploy/**      (Vercel + Nebius reference-builder)
   src/lib/finchip/**     (submission packaging)
