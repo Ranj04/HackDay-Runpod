@@ -1,10 +1,10 @@
-# Echo at Scale
+# Echo
 
 You can usually *feel* when your jumpshot is off. What you can't do is see why — nobody gets to watch their own form from the outside, mid-shot, frame by frame. Coaches do that for you, if you're lucky enough to have one. Echo is our attempt to put a little of that in everyone's pocket.
 
 Film a shot. Echo draws a skeleton on you, drops a second skeleton next to it — the "echo" of a clean reference shot — and shows you the gap. Then it tells you the one thing most worth fixing, and pulls a real, cited drill to fix that exact thing.
 
-**"At Scale"** is the engineering story: pose estimation moves off the browser and onto fanned-out GPU workers on **RunPod Flash**, so one clip — or a whole batch of them — gets analyzed in parallel by server-side endpoints instead of a single phone.
+**"At Echo"** is the engineering story: pose estimation moves off the browser and onto fanned-out GPU workers on **RunPod Flash**, so one clip — or a whole batch of them — gets analyzed in parallel by server-side endpoints instead of a single phone.
 
 ## What it does
 
