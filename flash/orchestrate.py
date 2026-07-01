@@ -211,6 +211,152 @@ async def _verify_timeline() -> None:
           f"overlap window={min(finishes) - max(starts):.3f}s)")
 
 
+# --- Phase 3 CPU @Endpoint: fan-out dispatcher on Flash (EU-RO-1) ------------
+try:
+    from runpod_flash import CpuInstanceType, DataCenter, Endpoint  # noqa: E402
+
+    orchestrator = Endpoint(
+        name="echo-orchestrate",
+        cpu=CpuInstanceType.CPU5C_2_4,
+        datacenter=DataCenter.EU_RO_1,
+        workers=(0, 2),
+        max_concurrency=4,
+        dependencies=[],
+        execution_timeout_ms=600_000,
+    )
+
+    @orchestrator.post("/rank")
+    async def rank_batch(request: dict) -> dict:
+        """Fan-out N clips to the GPU pose endpoint and return the SHARED CONTRACT."""
+        import asyncio
+        import json
+        import os
+        import sys
+        import time
+        import urllib.request
+
+        try:
+            flash_dir = os.path.dirname(os.path.abspath(__file__))
+        except NameError:
+            flash_dir = os.getcwd()
+        if flash_dir not in sys.path:
+            sys.path.insert(0, flash_dir)
+        from scoring import reference_metrics, score_rep  # noqa: WPS433
+
+        POSE_ROUTE = "/flash/pose_endpoint/runsync"
+
+        def _post_json(url: str, payload: dict, timeout: int = 600) -> dict:
+            req = urllib.request.Request(
+                url, data=json.dumps(payload).encode(),
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read())
+
+        def _http_pose_call_factory(base_url: str):
+            async def call(clip: dict) -> dict:
+                raw = await asyncio.to_thread(
+                    _post_json, f"{base_url}{POSE_ROUTE}", {"input": {"clip": clip}}
+                )
+                return raw.get("output", raw)
+            return call
+
+        async def _rank(clips: list[dict], pose_call) -> dict:
+            ref = reference_metrics()
+            batch_t0 = time.time()
+            timeline: list = [None] * len(clips)
+
+            async def _timed(i: int, clip: dict):
+                started = time.time() - batch_t0
+                out = None
+                try:
+                    out = await pose_call(clip)
+                    return out
+                finally:
+                    finished = time.time() - batch_t0
+                    wid = out.get("worker_id") if isinstance(out, dict) else None
+                    timeline[i] = {
+                        "rep_id": clip.get("rep_id"),
+                        "worker_id": wid or f"w{i + 1}",
+                        "started_at": round(started, 3),
+                        "finished_at": round(finished, 3),
+                    }
+
+            outputs = await asyncio.gather(
+                *[_timed(i, c) for i, c in enumerate(clips)], return_exceptions=True
+            )
+
+            reps = []
+            gpu_ms_total = 0.0
+            cpu_t0 = time.time()
+            for clip, out in zip(clips, outputs):
+                if isinstance(out, Exception) or not isinstance(out, dict) or "frames" not in out:
+                    reps.append({
+                        "rep_id": clip.get("rep_id"),
+                        "score": 0.0,
+                        "flaw_label": "error",
+                        "keypoints_uri": clip.get("keypoints_uri"),
+                    })
+                    continue
+                gpu_ms_total += float(out.get("gpu_ms", 0.0))
+                res = score_rep(out, ref)
+                rep = {
+                    "rep_id": clip.get("rep_id"),
+                    "score": float(res["score"]),
+                    "flaw_label": res["flaw_label"],
+                    "keypoints_uri": clip.get("keypoints_uri"),
+                }
+                if "dimensions" in res:
+                    rep["dimensions"] = res["dimensions"]
+                reps.append(rep)
+            cpu_ms = (time.time() - cpu_t0) * 1000.0
+
+            reps.sort(key=lambda r: r["score"])
+            return {
+                "reps": reps,
+                "worst": [r["rep_id"] for r in reps],
+                "timeline": timeline,
+                "cost": {
+                    "gpu_seconds": round(gpu_ms_total / 1000.0, 2),
+                    "cpu_seconds": round(cpu_ms / 1000.0, 3),
+                    "workers": len(clips),
+                    "reps": len(reps),
+                },
+            }
+
+        clips = request.get("clips") or []
+        if not clips:
+            raise ValueError("clips array is required")
+
+        base = os.environ.get("FLASH_BASE", "http://127.0.0.1:8888").rstrip("/")
+        report = await _rank(clips, _http_pose_call_factory(base))
+
+        if request.get("attach_drills", True):
+            _MOCK_DRILLS = {
+                "elbow_flare": "Wall form-shooting for elbow alignment",
+                "shallow_dip": "Dip-and-rise for leg-driven power",
+                "wrist_snap": "Follow-through hold for wrist snap",
+                "guide_hand": "One-hand form shooting (guide hand off)",
+                "low_release": "Raise the set point",
+            }
+            _DRILL_SOURCE = "https://www.breakthroughbasketball.com/fundamentals/shooting.html"
+            by_id = {r["rep_id"]: r for r in report["reps"]}
+            for rid in report["worst"]:
+                rep = by_id.get(rid)
+                if not rep or rep["flaw_label"] in ("none", "error"):
+                    continue
+                rep["drill"] = {
+                    "flaw_label": rep["flaw_label"],
+                    "title": _MOCK_DRILLS.get(rep["flaw_label"], "Form-shooting reset"),
+                    "source_url": _DRILL_SOURCE,
+                    "mock": True,
+                }
+
+        return report
+except ImportError:
+    pass  # local verify without runpod_flash installed
+
+
 if __name__ == "__main__":
     if os.environ.get("VERIFY_TIMELINE"):
         asyncio.run(_verify_timeline())

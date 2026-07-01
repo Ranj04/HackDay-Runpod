@@ -34,23 +34,22 @@ function flashBaseUrl(): string | null {
   return process.env.NODE_ENV === "development" ? DEFAULT_DEV_BASE : null;
 }
 
-function endpointUrl(kind: "pose" | "rag"): string {
+function endpointUrl(kind: "pose" | "rag" | "rank"): string {
   const direct =
     kind === "pose"
       ? process.env.RUNPOD_POSE_ENDPOINT_URL
-      : process.env.RUNPOD_RAG_ENDPOINT_URL;
+      : kind === "rag"
+        ? process.env.RUNPOD_RAG_ENDPOINT_URL
+        : process.env.RUNPOD_RANK_ENDPOINT_URL;
   if (direct?.trim()) return direct.trim();
 
   const base = flashBaseUrl();
   if (!base) {
     throw new Error("FLASH_NOT_CONFIGURED");
   }
-  return (
-    base +
-    (kind === "pose"
-      ? "/flash/pose_endpoint/runsync"
-      : "/flash/coaching_rag/drill")
-  );
+  if (kind === "pose") return `${base}/flash/pose_endpoint/runsync`;
+  if (kind === "rag") return `${base}/flash/coaching_rag/drill`;
+  return `${base}/flash/orchestrate/rank`;
 }
 
 async function postJson(url: string, body: unknown, timeoutMs: number) {
@@ -81,6 +80,54 @@ export function hasFlashRag(): boolean {
       process.env.NODE_ENV === "development",
   );
 }
+
+export function hasFlashRank(): boolean {
+  return Boolean(
+    process.env.RUNPOD_RANK_ENDPOINT_URL ||
+      process.env.RUNPOD_FLASH_BASE_URL ||
+      process.env.NODE_ENV === "development",
+  );
+}
+
+const RankRepSchema = z.object({
+  rep_id: z.string(),
+  score: z.number(),
+  flaw_label: z.string(),
+  keypoints_uri: z.string().nullable().optional(),
+  dimensions: z
+    .object({
+      release_angle: z.number(),
+      arc: z.number(),
+      knee_bend: z.number(),
+      follow_through: z.number(),
+    })
+    .optional(),
+});
+
+const RankReportSchema = z.object({
+  reps: z.array(RankRepSchema).min(1),
+  worst: z.array(z.string()).min(1),
+  cost: z
+    .object({
+      gpu_seconds: z.number().optional(),
+      cpu_seconds: z.number().optional(),
+      workers: z.number().optional(),
+      reps: z.number().optional(),
+    })
+    .optional(),
+  timeline: z
+    .array(
+      z.object({
+        rep_id: z.string(),
+        worker_id: z.string(),
+        started_at: z.number(),
+        finished_at: z.number(),
+      }),
+    )
+    .optional(),
+});
+
+export type FlashRankReport = z.infer<typeof RankReportSchema>;
 
 export async function poseClipOnGpu(
   clip: Blob,
@@ -140,4 +187,15 @@ export async function retrieveCitedDrill(
     drill: output.drill,
     references: output.sources,
   });
+}
+
+export async function rankClipsOnFlash(
+  clips: Array<Record<string, unknown>>,
+): Promise<FlashRankReport> {
+  const raw = await postJson(
+    endpointUrl("rank"),
+    { clips, attach_drills: false },
+    600_000,
+  );
+  return RankReportSchema.parse(raw?.output ?? raw);
 }

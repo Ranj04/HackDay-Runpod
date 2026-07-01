@@ -74,26 +74,46 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
     posRef.current = 0;
   }, [result.capture.id, total]);
 
-  // Stable fit transform (centers + scales the figure) from all visible poses.
+  // In the full results view, place the echo to the RIGHT of the player as a
+  // clean side-by-side "you vs ideal" instead of superimposed (which tangles the
+  // two figures). The compact hero keeps them overlaid — that's the "ghost" look.
+  const sideBySide = !compact && echoFrames.length > 0;
+
+  // Stable fit transform (centers + scales) from all visible poses, accounting
+  // for the echo's horizontal shift so both figures fit and stay centered.
   const fit = useMemo(() => {
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    const consider = (kps: { x: number; y: number; score?: number }[]) => {
-      for (const k of kps) {
-        if (!isVisible(k)) continue;
-        if (k.x < minX) minX = k.x;
-        if (k.x > maxX) maxX = k.x;
-        if (k.y < minY) minY = k.y;
-        if (k.y > maxY) maxY = k.y;
+    const bbox = (arr: PoseFrame[]) => {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const f of arr) {
+        for (const k of f.keypoints) {
+          if (!isVisible(k)) continue;
+          if (k.x < minX) minX = k.x;
+          if (k.x > maxX) maxX = k.x;
+          if (k.y < minY) minY = k.y;
+          if (k.y > maxY) maxY = k.y;
+        }
       }
+      return { minX, minY, maxX, maxY };
     };
-    for (const f of frames) consider(f.keypoints);
-    for (const g of echoFrames) consider(g.keypoints);
-    if (!Number.isFinite(minX)) return { s: 1, cx: width / 2, cy: height / 2 };
+    const u = bbox(frames);
+    if (!Number.isFinite(u.minX)) return { s: 1, cx: width / 2, cy: height / 2, echoShift: 0 };
+    const e = echoFrames.length ? bbox(echoFrames) : null;
+    const hasEcho = e !== null && Number.isFinite(e.minX);
+    const GAP = 0.1; // normalized gap between the two figures
+    // Shift the echo so its left edge clears the player's right edge + a gap.
+    const echoShift = sideBySide && hasEcho ? u.maxX + GAP - e!.minX : 0;
+
+    const minX = Math.min(u.minX, hasEcho ? e!.minX + echoShift : Infinity);
+    const maxX = Math.max(u.maxX, hasEcho ? e!.maxX + echoShift : -Infinity);
+    const minY = Math.min(u.minY, hasEcho ? e!.minY : Infinity);
+    const maxY = Math.max(u.maxY, hasEcho ? e!.maxY : -Infinity);
     const bwPx = Math.max(1, (maxX - minX) * width);
     const bhPx = Math.max(1, (maxY - minY) * height);
-    const s = Math.max(0.9, Math.min(2.8, Math.min((width * 0.7) / bwPx, (height * 0.82) / bhPx)));
-    return { s, cx: ((minX + maxX) / 2) * width, cy: ((minY + maxY) / 2) * height };
-  }, [frames, echoFrames, width, height]);
+    const widthFactor = sideBySide ? 0.86 : 0.7;
+    const floor = sideBySide ? 0.5 : 0.9; // let two figures shrink to fit
+    const s = Math.max(floor, Math.min(2.8, Math.min((width * widthFactor) / bwPx, (height * 0.82) / bhPx)));
+    return { s, cx: ((minX + maxX) / 2) * width, cy: ((minY + maxY) / 2) * height, echoShift };
+  }, [frames, echoFrames, width, height, sideBySide]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -157,7 +177,12 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
       ctx.translate(width / 2, height / 2);
       ctx.scale(fit.s, fit.s);
       ctx.translate(-fit.cx, -fit.cy);
-      if (echoFrame) drawEchoLines(ctx, echoFrame, width, height, intro);
+      if (echoFrame) {
+        ctx.save();
+        if (fit.echoShift) ctx.translate(fit.echoShift * width, 0);
+        drawEchoLines(ctx, echoFrame, width, height, intro);
+        ctx.restore();
+      }
       drawPlayer(ctx, user, width, height, flawKeys);
       const ballR = Math.max(7, torsoLengthPx(user, width, height) * 0.17);
       const ball = ballAt(pos, user);

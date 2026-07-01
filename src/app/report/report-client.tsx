@@ -14,12 +14,12 @@ import { loadLatestReportAction, saveReportAction } from "@/lib/db/server";
 import { sampleReport, type CoachedReport } from "@/lib/sample-report";
 import { cn } from "@/lib/utils";
 
-import { buildReport } from "./actions";
+import { buildReport, fetchFanoutReportAction } from "./actions";
 
 type State =
   | { phase: "loading" }
   | { phase: "error"; message: string }
-  | { phase: "ready"; report: CoachedReport; persisted: boolean };
+  | { phase: "ready"; report: CoachedReport; persisted: boolean; live: boolean };
 
 export function ReportClient() {
   const [state, setState] = useState<State>({ phase: "loading" });
@@ -32,11 +32,19 @@ export function ReportClient() {
     try {
       const saved = isSupabaseConfigured() ? await loadLatestReportAction() : null;
       if (saved && saved.reps?.length) {
-        setState({ phase: "ready", report: saved, persisted: true });
-      } else {
-        const report = await buildReport(sampleReport);
-        setState({ phase: "ready", report, persisted: false });
+        setState({ phase: "ready", report: saved, persisted: true, live: false });
+        return;
       }
+
+      const fanout = await fetchFanoutReportAction();
+      if (fanout?.reps?.length) {
+        const report = await buildReport(fanout);
+        setState({ phase: "ready", report, persisted: false, live: true });
+        return;
+      }
+
+      const report = await buildReport(sampleReport);
+      setState({ phase: "ready", report, persisted: false, live: false });
     } catch (caught) {
       setState({
         phase: "error",
@@ -92,7 +100,9 @@ export function ReportClient() {
         <p className="text-sm text-muted-foreground">
           {state.persisted
             ? "Loaded from Supabase — your last saved run."
-            : "Live fan-out report (mock contract until integration)."}
+            : state.live
+              ? "Live fan-out report from RunPod Flash (GPU pose + ranked scoring)."
+              : "Sample fan-out report (set BATCH_CLIP_URL + flash dev for a live run)."}
         </p>
         {!state.persisted ? (
           <Button

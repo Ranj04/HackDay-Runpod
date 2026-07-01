@@ -5,6 +5,7 @@
 // curated fallback so drills + sources render even before the endpoint is live.
 import { coachFlaw } from "@/lib/core";
 import type { Flaw } from "@/lib/contracts";
+import { hasFlashRank, rankClipsOnFlash } from "@/lib/flash/client";
 import type { CoachedRep, CoachedReport, RankReport } from "@/lib/sample-report";
 
 const FLAW_LABELS: Record<string, string> = {
@@ -45,4 +46,26 @@ export async function buildReport(report: RankReport): Promise<CoachedReport> {
   // Pass `timeline` through unchanged so B's fan-out replay (Phase 4) has the
   // real per-clip timing; coaching enrichment only touches `reps`.
   return { reps, worst: report.worst, cost: report.cost, timeline: report.timeline };
+}
+
+/** Live fan-out from A's Flash orchestrator when BATCH_CLIP_URL + Flash are set. */
+export async function fetchFanoutReportAction(): Promise<RankReport | null> {
+  if (!hasFlashRank()) return null;
+
+  const clipUrl = process.env.BATCH_CLIP_URL ?? process.env.CLIP_URL;
+  if (!clipUrl?.trim()) return null;
+
+  const count = Math.min(10, Math.max(1, Number(process.env.BATCH_CLIP_COUNT ?? "5")));
+  const clips = Array.from({ length: count }, (_, i) => ({
+    clip_url: clipUrl.trim(),
+    rep_id: `r${i + 1}`,
+    stride: 4,
+    nonce: `batch-${i}-${Date.now()}`,
+  }));
+
+  try {
+    return await rankClipsOnFlash(clips);
+  } catch {
+    return null;
+  }
 }
