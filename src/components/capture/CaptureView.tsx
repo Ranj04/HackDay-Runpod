@@ -11,6 +11,7 @@ import { createPoseLandmarker } from "@/lib/vision/poseLandmarker";
 import { landmarksToKeypoints } from "@/lib/vision/landmarks";
 import { buildCapture } from "@/lib/vision/buildCapture";
 import { isVisible, isVisibleForFraming } from "@/lib/vision/visibility";
+import { detectRelease, detectShootingSide } from "@/lib/analysis/detectRelease";
 import type { PoseFrame, ShotCapture } from "@/lib/contracts";
 
 export interface CaptureViewProps {
@@ -28,7 +29,32 @@ const POSE_CONNECTIONS = PoseLandmarker.POSE_CONNECTIONS as { start: number; end
 // fixed window so you never have to reach the keyboard from across the room.
 const READY_HOLD_MS = 700;
 const COUNTDOWN_S = 3;
-const RECORD_MS = 5000;
+const RECORD_MS = 5000; // hard cap / fallback if the shot is never detected
+
+// Auto-stop as soon as the shot is done, so trailing movement (walking away,
+// relaxing) never gets recorded and corrupts the form-vs-echo ending. We watch
+// the highest wrist: it rises through release to an apex, holds the follow-
+// through, then drops. Once it has clearly risen and then come back down past
+// the apex for a short dwell, the shot is over — stop and analyze.
+const MIN_RECORD_MS = 900; // never auto-stop before a shot could plausibly finish
+const ARM_RISE = 0.12; // wrist must rise this far (normalized) to count as a real shot
+const DESCEND_MARGIN = 0.1; // drop this far below the apex => follow-through ending
+const FOLLOW_DWELL_MS = 350; // hold past the apex before calling the shot done
+const FOLLOW_THROUGH_MS = 600; // keep this much after release when trimming the tail
+
+/**
+ * Trim buffered frames so the capture ends on the follow-through, dropping any
+ * trailing movement after the shot. Keeps the whole lead-up (dip drives knee
+ * flexion) and cuts only the tail at release + a short follow-through window.
+ */
+function trimToFollowThrough(raw: PoseFrame[]): PoseFrame[] {
+  if (raw.length < 6) return raw;
+  const tmp: ShotCapture = { id: "live", frames: raw, fps: 30, view: "side" };
+  const releaseIdx = detectRelease(tmp, detectShootingSide(tmp));
+  const releaseT = raw[releaseIdx]?.t ?? raw[raw.length - 1].t;
+  const trimmed = raw.filter((f) => f.t <= releaseT + FOLLOW_THROUGH_MS);
+  return trimmed.length >= 4 ? trimmed : raw;
+}
 
 /** Draw the live preview skeleton — gated: only confidently-seen joints/bones. */
 function drawGatedPreview(ctx: CanvasRenderingContext2D, landmarks: NormalizedLandmark[], w: number, h: number): void {
@@ -101,6 +127,13 @@ export function CaptureView({ onCapture, className, targetFps, precision }: Capt
   const bufferRef = useRef<PoseFrame[]>([]);
   const recordStartRef = useRef(0);
   const lastVideoTimeRef = useRef(-1);
+
+  // Live shot-completion detection state (reset at each record start).
+  const shotBaseYRef = useRef(Infinity); // wrist height at the set position
+  const apexYRef = useRef(Infinity); // highest wrist seen (smallest y)
+  const apexTRef = useRef(0); // when the apex happened (ms into recording)
+  const shotArmedRef = useRef(false); // a real rise has been seen
+  const finishRecordingRef = useRef<() => void>(() => {}); // stable handle for the loop
 
   const [ready, setReady] = useState(false);
   const [capturable, setCapturable] = useState(false);
@@ -175,10 +208,33 @@ export function CaptureView({ onCapture, className, targetFps, precision }: Capt
         if (landmarks) {
           drawGatedPreview(ctx, landmarks, canvas.width, canvas.height);
           if (recordingRef.current) {
+            const tRec = nowMs - recordStartRef.current;
             bufferRef.current.push({
-              t: nowMs - recordStartRef.current,
+              t: tRec,
               keypoints: landmarksToKeypoints(landmarks),
             });
+
+            // Track the highest wrist to detect when the shot is finished.
+            const lw = landmarks[LM.lWrist];
+            const rw = landmarks[LM.rWrist];
+            const ly = lw && isVisible(lw) ? lw.y : Infinity;
+            const ry = rw && isVisible(rw) ? rw.y : Infinity;
+            const wristY = Math.min(ly, ry); // smaller y = higher hand
+            if (Number.isFinite(wristY)) {
+              if (!Number.isFinite(shotBaseYRef.current)) shotBaseYRef.current = wristY;
+              if (wristY < apexYRef.current) {
+                apexYRef.current = wristY;
+                apexTRef.current = tRec;
+              }
+              if (!shotArmedRef.current && shotBaseYRef.current - apexYRef.current >= ARM_RISE) {
+                shotArmedRef.current = true; // a genuine upward shot motion happened
+              }
+              const descended = wristY - apexYRef.current >= DESCEND_MARGIN;
+              const dwelled = tRec - apexTRef.current >= FOLLOW_DWELL_MS;
+              if (shotArmedRef.current && tRec >= MIN_RECORD_MS && descended && dwelled) {
+                finishRecordingRef.current(); // shot done — stop and analyze now
+              }
+            }
           }
         }
       }
@@ -199,7 +255,8 @@ export function CaptureView({ onCapture, className, targetFps, precision }: Capt
   const finishRecording = useCallback(() => {
     if (!recordingRef.current) return;
     recordingRef.current = false;
-    const capture = buildCapture(bufferRef.current, {
+    // Trim trailing movement so the capture ends on the follow-through.
+    const capture = buildCapture(trimToFollowThrough(bufferRef.current), {
       view: "side",
       ...buildOptsRef.current,
     });
@@ -217,6 +274,12 @@ export function CaptureView({ onCapture, className, targetFps, precision }: Capt
     }
     onCaptureRef.current?.(capture);
   }, []);
+
+  // Keep a stable handle so the detection loop can auto-stop without depending on
+  // the callback identity (finishRecording is already referentially stable).
+  useEffect(() => {
+    finishRecordingRef.current = finishRecording;
+  }, [finishRecording]);
 
   // Once the framing is good, hold briefly then start the countdown.
   useEffect(() => {
@@ -251,6 +314,11 @@ export function CaptureView({ onCapture, className, targetFps, precision }: Capt
     recordStartRef.current = performance.now();
     recordingRef.current = true;
     videoChunksRef.current = [];
+    // Reset shot-completion detection for this take.
+    shotBaseYRef.current = Infinity;
+    apexYRef.current = Infinity;
+    apexTRef.current = 0;
+    shotArmedRef.current = false;
 
     if (stream && typeof MediaRecorder !== "undefined") {
       const preferredTypes = [
