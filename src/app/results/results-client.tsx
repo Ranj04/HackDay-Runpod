@@ -4,12 +4,14 @@
 // analyze + coach server action on it, and renders the canvas + results. Falls
 // back to the bundled sample shot when there's no live capture, so the page
 // never blanks during a demo.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { LoaderCircle } from "lucide-react";
 
 import { EchoOverlay } from "@/components/overlay";
+import { BaseballShowcase } from "@/components/overlay";
 import { ResultsView } from "@/components/results";
+import { baseballSampleAnalysis, baseballSampleCoaching } from "@/lib/baseball-sample";
 import { loadCapture, loadCapturedClip } from "@/lib/capture-store";
 import {
   AnalysisResultSchema,
@@ -18,8 +20,9 @@ import {
   type CoachingResult,
 } from "@/lib/contracts";
 import { mockShotCapture } from "@/lib/sample-shot";
+import type { SportId } from "@/lib/sports";
 
-import { analyzeAndCoach } from "../capture/actions";
+import { analyzeAndCoach, analyzeBaseballAndCoach } from "../capture/actions";
 import { SaveSessionButton } from "./save-session-button";
 
 type State =
@@ -38,18 +41,219 @@ type State =
       upgrading?: boolean; // instant browser result shown; GPU pass in flight
     };
 
-export function ResultsClient() {
-  const [state, setState] = useState<State>({ phase: "loading" });
-  // Guard against double-run (React strict mode / fast refresh).
-  const started = useRef(false);
+export function ResultsClient({ sport }: { sport: SportId }) {
+  if (sport === "baseball") {
+    return <BaseballResultsClient />;
+  }
+
+  return <BasketballResultsClient />;
+}
+
+function clipAsFile(clip: Blob, captureId: string): File {
+  const extension = clip.type.includes("quicktime")
+    ? "mov"
+    : clip.type.includes("mp4")
+      ? "mp4"
+      : "webm";
+  return new File([clip], `echo-${captureId}.${extension}`, {
+    type: clip.type || "video/webm",
+  });
+}
+
+function BaseballResultsClient() {
+  const [state, setState] = useState<State>({
+    phase: "ready",
+    analysis: baseballSampleAnalysis,
+    coaching: baseballSampleCoaching,
+    live: false,
+    clip: null,
+    compute: "browser-fallback",
+  });
 
   useEffect(() => {
-    if (started.current) return;
-    started.current = true;
+    const live = loadCapture("baseball");
+    const clip = live ? loadCapturedClip("baseball") : null;
+    let cancelled = false;
 
-    const live = loadCapture();
+    if (!live) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    analyzeBaseballAndCoach(live)
+      .then((result) => {
+        if (cancelled) return;
+        setState({
+          phase: "ready",
+          analysis: result.analysis,
+          coaching: result.coaching,
+          live: true,
+          clip,
+          compute: "browser-fallback",
+          upgrading: Boolean(clip),
+        });
+      })
+      .catch((caught) => {
+        if (cancelled) return;
+        setState({
+          phase: "error",
+          message:
+            caught instanceof Error
+              ? caught.message
+              : "Could not analyze that pitch.",
+        });
+      });
+
+    if (clip) {
+      const form = new FormData();
+      form.set("capture", JSON.stringify(live));
+      form.set("clip", clipAsFile(clip, live.id));
+      form.set("sport", "baseball");
+      fetch("/api/analyze", { method: "POST", body: form })
+        .then(async (response) => {
+          const payload = await response.json().catch(() => null);
+          if (cancelled) return;
+          if (!response.ok || !payload) {
+            setState((previous) =>
+              previous.phase === "ready"
+                ? {
+                    ...previous,
+                    upgrading: false,
+                    warning: payload?.error ?? "GPU verification was unavailable",
+                  }
+                : previous,
+            );
+            return;
+          }
+          setState((previous) =>
+            previous.phase === "ready"
+              ? {
+                  ...previous,
+                  analysis: AnalysisResultSchema.parse(payload.analysis),
+                  coaching: CoachingResultSchema.parse(payload.coaching),
+                  compute:
+                    payload.compute === "flash-gpu"
+                      ? "flash-gpu"
+                      : "browser-fallback",
+                  gpuMs:
+                    typeof payload.gpuMs === "number" ? payload.gpuMs : undefined,
+                  modelLoadMs:
+                    typeof payload.modelLoadMs === "number"
+                      ? payload.modelLoadMs
+                      : undefined,
+                  warning:
+                    typeof payload.warning === "string"
+                      ? payload.warning
+                      : undefined,
+                  upgrading: false,
+                }
+              : previous,
+          );
+        })
+        .catch((caught) => {
+          if (cancelled) return;
+          setState((previous) =>
+            previous.phase === "ready"
+              ? {
+                  ...previous,
+                  upgrading: false,
+                  warning:
+                    caught instanceof Error
+                      ? caught.message
+                      : "GPU verification was unavailable",
+                }
+              : previous,
+          );
+        });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (state.phase === "loading") {
+    return (
+      <div className="grid min-h-[31rem] place-items-center rounded-[2rem] border border-border bg-card text-muted-foreground">
+        <p className="flex items-center gap-2 text-sm">
+          <LoaderCircle className="size-5 animate-spin" /> Analyzing your pitch…
+        </p>
+      </div>
+    );
+  }
+
+  if (state.phase === "error") {
+    return (
+      <div className="space-y-4 rounded-[2rem] border border-border bg-card p-8 text-muted-foreground">
+        <p className="text-sm text-destructive">{state.message}</p>
+        <Link
+          className="text-sm underline hover:text-foreground"
+          href="/capture?sport=baseball"
+        >
+          Record or upload another pitch
+        </Link>
+      </div>
+    );
+  }
+
+  const { analysis, coaching } = state;
+  return (
+    <div className="space-y-6">
+      <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-muted-foreground">
+        {state.live ? (
+          state.upgrading ? (
+            <>
+              <LoaderCircle className="size-3 animate-spin" /> Verifying on RunPod
+              GPU…
+            </>
+          ) : state.compute === "flash-gpu" ? (
+            `RunPod Flash GPU${state.gpuMs ? ` · ${(state.gpuMs / 1000).toFixed(1)}s` : ""}`
+          ) : (
+            `Browser analysis${state.warning ? ` · ${state.warning}` : ""}`
+          )
+        ) : (
+          "Sample pitch — record or upload your own to see your delivery."
+        )}
+      </p>
+      <ResultsView
+        analysis={analysis}
+        coaching={coaching}
+        echoOverlay={
+          <BaseballShowcase
+            observed={analysis.topFlaw.observed}
+            reference={analysis.topFlaw.reference}
+            score={analysis.score}
+          />
+        }
+        metricLabels={["Your separation", "Reference"]}
+        scoreBlurb={
+          analysis.topFlaw.id === "pitch_sequence_on_target"
+            ? "Strong sequence. Keep the same tempo."
+            : "One timing cue for your next bullpen."
+        }
+        scoreLabel="Delivery score"
+        retryHref="/capture?sport=baseball"
+        retryLabel="Try another pitch"
+        showSaveAction={false}
+      />
+      <Link
+        className="inline-block text-sm text-muted-foreground underline hover:text-foreground"
+        href="/capture?sport=baseball"
+      >
+        Record or upload another pitch
+      </Link>
+    </div>
+  );
+}
+
+function BasketballResultsClient() {
+  const [state, setState] = useState<State>({ phase: "loading" });
+
+  useEffect(() => {
+    const live = loadCapture("basketball");
     const capture = live ?? mockShotCapture;
-    const clip = live ? loadCapturedClip() : null;
+    const clip = live ? loadCapturedClip("basketball") : null;
     let cancelled = false;
 
     // 1) Instant: analyze the browser keypoints we already captured — renders in
@@ -83,10 +287,9 @@ export function ResultsClient() {
       form.set("capture", JSON.stringify(capture));
       form.set(
         "clip",
-        new File([clip], `echo-${capture.id}.webm`, {
-          type: clip.type || "video/webm",
-        }),
+        clipAsFile(clip, capture.id),
       );
+      form.set("sport", "basketball");
       fetch("/api/analyze", { method: "POST", body: form })
         .then(async (response) => {
           const payload = await response.json().catch(() => null);

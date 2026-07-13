@@ -14,11 +14,11 @@ const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrai
 
 export const metadata: Metadata = {
   title: {
-    default: "Echo — AI Basketball Form Coach",
+    default: "Echo — AI Sports Form Coach",
     template: "%s · Echo",
   },
   description:
-    "Measure your basketball mechanics, compare your motion with a echo reference, and get one cited drill to improve.",
+    "Measure basketball and baseball mechanics, compare your motion with an Echo reference, and get one cited drill to improve.",
 };
 
 export default function RootLayout({
@@ -50,13 +50,13 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/report"
-                  className="rounded-full px-3 py-2 text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground"
+                  className="hidden rounded-full px-3 py-2 text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground sm:inline-flex"
                 >
                   Report
                 </Link>
                 <Link
                   href="/history"
-                  className="rounded-full px-3 py-2 text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground"
+                  className="hidden rounded-full px-3 py-2 text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground sm:inline-flex"
                 >
                   History
                 </Link>

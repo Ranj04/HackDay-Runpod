@@ -5,6 +5,10 @@
 // step must run on the server (keys never reach the client).
 import { analyzeShot, coachFlaw } from "@/lib/core";
 import {
+  analyzeBaseballPitch,
+  coachBaseballPitch,
+} from "@/lib/analysis/baseball";
+import {
   ShotCaptureSchema,
   type AnalysisResult,
   type CoachingResult,
@@ -18,5 +22,15 @@ export async function analyzeAndCoach(capture: ShotCapture): Promise<{
   const parsed = ShotCaptureSchema.parse(capture);
   const analysis = await analyzeShot(parsed);
   const coaching = await coachFlaw(analysis.topFlaw);
+  return { analysis, coaching };
+}
+
+export async function analyzeBaseballAndCoach(capture: ShotCapture): Promise<{
+  analysis: AnalysisResult;
+  coaching: CoachingResult;
+}> {
+  const parsed = ShotCaptureSchema.parse(capture);
+  const analysis = analyzeBaseballPitch(parsed);
+  const coaching = coachBaseballPitch(analysis.topFlaw);
   return { analysis, coaching };
 }
