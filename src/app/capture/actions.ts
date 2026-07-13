@@ -9,6 +9,10 @@ import {
   coachBaseballPitch,
 } from "@/lib/analysis/baseball";
 import {
+  analyzeFootballThrow,
+  coachFootballThrow,
+} from "@/lib/analysis/football";
+import {
   ShotCaptureSchema,
   type AnalysisResult,
   type CoachingResult,
@@ -32,5 +36,15 @@ export async function analyzeBaseballAndCoach(capture: ShotCapture): Promise<{
   const parsed = ShotCaptureSchema.parse(capture);
   const analysis = analyzeBaseballPitch(parsed);
   const coaching = coachBaseballPitch(analysis.topFlaw);
+  return { analysis, coaching };
+}
+
+export async function analyzeFootballAndCoach(capture: ShotCapture): Promise<{
+  analysis: AnalysisResult;
+  coaching: CoachingResult;
+}> {
+  const parsed = ShotCaptureSchema.parse(capture);
+  const analysis = await analyzeFootballThrow(parsed);
+  const coaching = await coachFootballThrow(analysis.topFlaw);
   return { analysis, coaching };
 }

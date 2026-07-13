@@ -24,7 +24,7 @@ export function ProductHeader({ authSlot }: { authSlot: ReactNode }) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background">
-      <div className="mx-auto flex min-h-20 w-full max-w-[1536px] flex-wrap items-center gap-x-12 px-5 py-3 sm:px-8 lg:flex-nowrap">
+      <div className="mx-auto flex min-h-20 w-full max-w-[1536px] flex-wrap items-center gap-x-10 px-5 py-3 sm:px-8 xl:flex-nowrap">
         <Link
           aria-label="Echo home"
           className="shrink-0 font-heading text-[2rem] font-bold uppercase leading-none tracking-[-0.055em] text-foreground transition hover:text-primary"
@@ -34,8 +34,9 @@ export function ProductHeader({ authSlot }: { authSlot: ReactNode }) {
         </Link>
 
         <SportSwitcher
-          className="order-3 mt-3 w-full sm:w-96 lg:order-none lg:mt-0"
+          className="order-3 mt-3 w-full sm:w-[36rem] xl:order-none xl:mt-0"
           pathname={pathname}
+          query={searchParams.toString()}
           sport={sport}
         />
 

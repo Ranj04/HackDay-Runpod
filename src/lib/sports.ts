@@ -1,4 +1,6 @@
-export type SportId = "basketball" | "baseball";
+export const SPORT_IDS = ["basketball", "baseball", "football"] as const;
+
+export type SportId = (typeof SPORT_IDS)[number];
 
 export interface SportCopy {
   id: SportId;
@@ -16,7 +18,7 @@ export interface SportCopy {
 }
 
 export interface SportProfile extends SportCopy {
-  movement: "shot" | "pitch";
+  movement: "shot" | "pitch" | "throw";
   checkpoints: readonly [string, string, string];
 }
 
@@ -55,13 +57,43 @@ export const SPORTS: Record<SportId, SportProfile> = {
     movement: "pitch",
     checkpoints: ["Load", "Foot strike", "Release"],
   },
+  football: {
+    id: "football",
+    label: "Football",
+    discipline: "Quarterback throwing coach",
+    headline: "See the throw",
+    accentHeadline: "checkpoint by checkpoint.",
+    description:
+      "Echo compares your throwing sequence with a quarterback reference and gives you one focused correction for the next rep.",
+    primaryLabel: "Analyze your throw",
+    primaryHref: "/capture?sport=football",
+    secondaryLabel: "View sample",
+    sampleHref: "/results?sport=football",
+    trackedLabel: "Throw tracked",
+    alignedLabel: "Sequence aligned",
+    movement: "throw",
+    checkpoints: ["Set", "Foot plant", "Release"],
+  },
 };
 
 export function parseSport(value: string | string[] | undefined): SportId {
-  return value === "baseball" ? "baseball" : "basketball";
+  return value === "baseball" || value === "football"
+    ? value
+    : "basketball";
 }
 
-/** Keep the selected sport in every athlete-facing route. */
-export function sportHref(pathname: string, sport: SportId): string {
-  return sport === "baseball" ? `${pathname}?sport=baseball` : pathname;
+/** Keep the selected sport and any flow state in athlete-facing routes. */
+export function sportHref(
+  pathname: string,
+  sport: SportId,
+  query?: string | { toString(): string },
+): string {
+  const params = new URLSearchParams(query?.toString() ?? "");
+  if (sport === "basketball") {
+    params.delete("sport");
+  } else {
+    params.set("sport", sport);
+  }
+  const serialized = params.toString();
+  return serialized ? `${pathname}?${serialized}` : pathname;
 }

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/tabs";
 import { clearCapture, saveCapture } from "@/lib/capture-store";
 import type { ShotCapture } from "@/lib/contracts";
-import type { SportId } from "@/lib/sports";
+import { SPORTS, sportHref, type SportId } from "@/lib/sports";
 
 type CaptureMode = "record" | "upload";
 
@@ -28,8 +28,8 @@ export function CaptureStage({
   const router = useRouter();
   const [navigating, setNavigating] = useState(false);
   const [mode, setMode] = useState<CaptureMode>(initialMode);
-  const movement = sport === "baseball" ? "pitch" : "shot";
-  const resultsHref = sport === "baseball" ? "/results?sport=baseball" : "/results";
+  const movement = SPORTS[sport].movement;
+  const resultsHref = sportHref("/results", sport);
 
   // A real recorded shot: stash it and let /results analyze + render it.
   function handleCapture(capture: ShotCapture, clip?: Blob) {

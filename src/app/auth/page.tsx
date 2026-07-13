@@ -2,15 +2,21 @@ import { Cloud, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { parseSport, sportHref } from "@/lib/sports";
 
 import { AuthForm } from "./auth-form";
 
 export default async function AuthPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{
+    next?: string;
+    sport?: string | string[];
+  }>;
 }) {
-  const { next = "/capture" } = await searchParams;
+  const params = await searchParams;
+  const sport = parseSport(params.sport);
+  const next = params.next ?? sportHref("/capture", sport);
   const configured = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -45,7 +51,10 @@ export default async function AuthPage({
             <div className="mb-5 rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm leading-6 text-warning">
               Supabase credentials are not configured in this environment.
               Account actions are disabled; you can still use the{" "}
-              <Link className="font-semibold underline" href="/results">
+              <Link
+                className="font-semibold underline"
+                href={sportHref("/results", sport)}
+              >
                 local demo flow
               </Link>
               .

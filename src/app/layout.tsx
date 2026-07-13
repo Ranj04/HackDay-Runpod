@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     template: "%s · Echo",
   },
   description:
-    "One video. One fix. Compare basketball and baseball mechanics with an Echo reference and train the correction that matters next.",
+    "One video. One fix. Compare basketball, baseball, and football mechanics with an Echo reference and train the correction that matters next.",
 };
 
 function HeaderFallback() {

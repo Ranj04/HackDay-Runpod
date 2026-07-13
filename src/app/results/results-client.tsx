@@ -4,12 +4,15 @@
 // analyze + coach server action on it, and renders the canvas + results. Falls
 // back to the bundled sample shot when there's no live capture, so the page
 // never blanks during a demo.
-import { useEffect, useState } from "react";
+import { type ComponentType, useEffect, useState } from "react";
 import Link from "next/link";
 import { LoaderCircle } from "lucide-react";
 
-import { EchoOverlay } from "@/components/overlay";
-import { BaseballShowcase } from "@/components/overlay";
+import {
+  BaseballShowcase,
+  EchoOverlay,
+  FootballShowcase,
+} from "@/components/overlay";
 import { ResultsView } from "@/components/results";
 import { baseballSampleAnalysis, baseballSampleCoaching } from "@/lib/baseball-sample";
 import { loadCapture, loadCapturedClip } from "@/lib/capture-store";
@@ -18,11 +21,20 @@ import {
   CoachingResultSchema,
   type AnalysisResult,
   type CoachingResult,
+  type ShotCapture,
 } from "@/lib/contracts";
+import {
+  footballSampleAnalysis,
+  footballSampleCoaching,
+} from "@/lib/football-sample";
 import { mockShotCapture } from "@/lib/sample-shot";
 import type { SportId } from "@/lib/sports";
 
-import { analyzeAndCoach, analyzeBaseballAndCoach } from "../capture/actions";
+import {
+  analyzeAndCoach,
+  analyzeBaseballAndCoach,
+  analyzeFootballAndCoach,
+} from "../capture/actions";
 import { SaveSessionButton } from "./save-session-button";
 
 type State =
@@ -43,7 +55,11 @@ type State =
 
 export function ResultsClient({ sport }: { sport: SportId }) {
   if (sport === "baseball") {
-    return <BaseballResultsClient />;
+    return <ThrowingResultsClient config={BASEBALL_RESULTS} key="baseball" />;
+  }
+
+  if (sport === "football") {
+    return <ThrowingResultsClient config={FOOTBALL_RESULTS} key="football" />;
   }
 
   return <BasketballResultsClient />;
@@ -60,19 +76,91 @@ function clipAsFile(clip: Blob, captureId: string): File {
   });
 }
 
-function BaseballResultsClient() {
-  const [state, setState] = useState<State>({
+type ThrowingSportId = Extract<SportId, "baseball" | "football">;
+type ThrowingAnalysisAction = (capture: ShotCapture) => Promise<{
+  analysis: AnalysisResult;
+  coaching: CoachingResult;
+}>;
+type ThrowingShowcase = ComponentType<{
+  observed?: number;
+  reference?: number;
+  score?: number;
+}>;
+
+interface ThrowingResultsConfig {
+  sport: ThrowingSportId;
+  analyzeAndCoach: ThrowingAnalysisAction;
+  sampleAnalysis: AnalysisResult;
+  sampleCoaching: CoachingResult;
+  sampleStatus: string;
+  loadingLabel: string;
+  errorFallback: string;
+  errorLinkLabel: string;
+  metricLabels: readonly [string, string];
+  scoreLabel: string;
+  scoreBlurb: (analysis: AnalysisResult) => string;
+  retryHref: string;
+  retryLabel: string;
+  Showcase: ThrowingShowcase;
+}
+
+const BASEBALL_RESULTS: ThrowingResultsConfig = {
+  sport: "baseball",
+  analyzeAndCoach: analyzeBaseballAndCoach,
+  sampleAnalysis: baseballSampleAnalysis,
+  sampleCoaching: baseballSampleCoaching,
+  sampleStatus: "Sample pitch — record or upload your own to see your delivery.",
+  loadingLabel: "Analyzing your pitch…",
+  errorFallback: "Could not analyze that pitch.",
+  errorLinkLabel: "Record or upload another pitch",
+  metricLabels: ["Your separation", "Reference"],
+  scoreLabel: "Delivery score",
+  scoreBlurb: (analysis) =>
+    analysis.topFlaw.id === "pitch_sequence_on_target"
+      ? "Strong sequence. Keep the same tempo."
+      : "One timing cue for your next bullpen.",
+  retryHref: "/capture?sport=baseball",
+  retryLabel: "Try another pitch",
+  Showcase: BaseballShowcase,
+};
+
+const FOOTBALL_RESULTS: ThrowingResultsConfig = {
+  sport: "football",
+  analyzeAndCoach: analyzeFootballAndCoach,
+  sampleAnalysis: footballSampleAnalysis,
+  sampleCoaching: footballSampleCoaching,
+  sampleStatus: "Sample throw — record or upload your own to see your sequence.",
+  loadingLabel: "Analyzing your throw…",
+  errorFallback: "Could not analyze that throw.",
+  errorLinkLabel: "Record or upload another throw",
+  metricLabels: ["Your separation", "Echo reference"],
+  scoreLabel: "Throwing score",
+  scoreBlurb: (analysis) =>
+    analysis.topFlaw.id === "football_sequence_on_target"
+      ? "Strong sequence. Preserve the same rhythm."
+      : "One sequencing cue for your next rep.",
+  retryHref: "/capture?sport=football",
+  retryLabel: "Try another throw",
+  Showcase: FootballShowcase,
+};
+
+function ThrowingResultsClient({
+  config,
+}: {
+  config: ThrowingResultsConfig;
+}) {
+  const [state, setState] = useState<State>(() => ({
     phase: "ready",
-    analysis: baseballSampleAnalysis,
-    coaching: baseballSampleCoaching,
+    analysis: config.sampleAnalysis,
+    coaching: config.sampleCoaching,
     live: false,
     clip: null,
     compute: "browser-fallback",
-  });
+  }));
 
   useEffect(() => {
-    const live = loadCapture("baseball");
-    const clip = live ? loadCapturedClip("baseball") : null;
+    const live = loadCapture(config.sport);
+    const clip = live ? loadCapturedClip(config.sport) : null;
     let cancelled = false;
 
     if (!live) {
@@ -81,7 +169,7 @@ function BaseballResultsClient() {
       };
     }
 
-    analyzeBaseballAndCoach(live)
+    config.analyzeAndCoach(live)
       .then((result) => {
         if (cancelled) return;
         setState({
@@ -101,7 +189,7 @@ function BaseballResultsClient() {
           message:
             caught instanceof Error
               ? caught.message
-              : "Could not analyze that pitch.",
+              : config.errorFallback,
         });
       });
 
@@ -109,7 +197,7 @@ function BaseballResultsClient() {
       const form = new FormData();
       form.set("capture", JSON.stringify(live));
       form.set("clip", clipAsFile(clip, live.id));
-      form.set("sport", "baseball");
+      form.set("sport", config.sport);
       fetch("/api/analyze", { method: "POST", body: form })
         .then(async (response) => {
           const payload = await response.json().catch(() => null);
@@ -171,13 +259,13 @@ function BaseballResultsClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [config]);
 
   if (state.phase === "loading") {
     return (
       <div className="grid min-h-[31rem] place-items-center border-y border-border text-muted-foreground">
         <p className="flex items-center gap-2 text-sm">
-          <LoaderCircle className="size-5 animate-spin" /> Analyzing your pitch…
+          <LoaderCircle className="size-5 animate-spin" /> {config.loadingLabel}
         </p>
       </div>
     );
@@ -189,9 +277,9 @@ function BaseballResultsClient() {
         <p className="text-sm text-destructive">{state.message}</p>
         <Link
           className="text-sm font-medium text-accent-brand-strong underline decoration-accent-brand/40 underline-offset-4 hover:decoration-accent-brand"
-          href="/capture?sport=baseball"
+          href={config.retryHref}
         >
-          Record or upload another pitch
+          {config.errorLinkLabel}
         </Link>
       </div>
     );
@@ -216,28 +304,24 @@ function BaseballResultsClient() {
             `Browser analysis${state.warning ? ` · ${state.warning}` : ""}`
           )
         ) : (
-          "Sample pitch — record or upload your own to see your delivery."
+          config.sampleStatus
         )}
       </p>
       <ResultsView
         analysis={analysis}
         coaching={coaching}
         echoOverlay={
-          <BaseballShowcase
+          <config.Showcase
             observed={analysis.topFlaw.observed}
             reference={analysis.topFlaw.reference}
             score={analysis.score}
           />
         }
-        metricLabels={["Your separation", "Reference"]}
-        scoreBlurb={
-          analysis.topFlaw.id === "pitch_sequence_on_target"
-            ? "Strong sequence. Keep the same tempo."
-            : "One timing cue for your next bullpen."
-        }
-        scoreLabel="Delivery score"
-        retryHref="/capture?sport=baseball"
-        retryLabel="Try another pitch"
+        metricLabels={config.metricLabels}
+        scoreBlurb={config.scoreBlurb(analysis)}
+        scoreLabel={config.scoreLabel}
+        retryHref={config.retryHref}
+        retryLabel={config.retryLabel}
         showSaveAction={false}
       />
     </div>

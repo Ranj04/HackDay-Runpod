@@ -21,7 +21,7 @@ import { buildCapture } from "@/lib/vision/buildCapture";
 import { isVisible, isVisibleForFraming } from "@/lib/vision/visibility";
 import { detectRelease, detectShootingSide } from "@/lib/analysis/detectRelease";
 import type { PoseFrame, ShotCapture } from "@/lib/contracts";
-import type { SportId } from "@/lib/sports";
+import { SPORTS, type SportId } from "@/lib/sports";
 import { cn } from "@/lib/utils";
 
 export interface CaptureViewProps {
@@ -54,6 +54,33 @@ const ARM_RISE = 0.12; // wrist must rise this far (normalized) to count as a re
 const DESCEND_MARGIN = 0.1; // drop this far below the apex => follow-through ending
 const FOLLOW_DWELL_MS = 350; // hold past the apex before calling the shot done
 const FOLLOW_THROUGH_MS = 600; // keep this much after release when trimming the tail
+
+const CAPTURE_COPY: Record<
+  SportId,
+  { action: string; description: string; framing: string; setup: string }
+> = {
+  basketball: {
+    action: "shoot",
+    description:
+      "Record a side-view shot. Echo tracks your mechanics from dip through release.",
+    framing: "Include your hips, knees and shooting arm",
+    setup: "About an arm's length from the screen",
+  },
+  baseball: {
+    action: "pitch",
+    description:
+      "Record a side-view pitch. Echo tracks your delivery from leg lift through release.",
+    framing: "Include your hips, glove and stride",
+    setup: "Step back until your full delivery stays visible",
+  },
+  football: {
+    action: "throw",
+    description:
+      "Record a throwing-side quarterback pass. Echo tracks your sequence from set through foot plant and release.",
+    framing: "Include both feet and hold your finish until recording stops",
+    setup: "Step back until your shoulders, hips, arm and both feet are visible",
+  },
+};
 
 /**
  * Trim buffered frames so the capture ends on the follow-through, dropping any
@@ -109,7 +136,10 @@ const LM = {
 /** Side-on framing gate — tuned for laptop demos (closer than "ten feet back").
  *  Torso: both hips + at least one shoulder. Arm: one full chain. Leg: hip→knee;
  *  ankle optional when the knee is low (feet often clip before MediaPipe sees them). */
-function isCapturable(landmarks: NormalizedLandmark[]): boolean {
+function isCapturable(
+  landmarks: NormalizedLandmark[],
+  sport: SportId,
+): boolean {
   const v = (i: number) => Boolean(landmarks[i] && isVisibleForFraming(landmarks[i]));
 
   const torso = v(LM.lHip) && v(LM.rHip) && (v(LM.lShoulder) || v(LM.rShoulder));
@@ -125,6 +155,17 @@ function isCapturable(landmarks: NormalizedLandmark[]): boolean {
   };
   const leg =
     legOk(LM.lHip, LM.lKnee, LM.lAnkle) || legOk(LM.rHip, LM.rKnee, LM.rAnkle);
+
+  if (sport === "football") {
+    const completePlant =
+      v(LM.lShoulder) &&
+      v(LM.rShoulder) &&
+      v(LM.lHip) &&
+      v(LM.rHip) &&
+      v(LM.lAnkle) &&
+      v(LM.rAnkle);
+    return completePlant && arm;
+  }
 
   return torso && arm && leg;
 }
@@ -217,7 +258,7 @@ export function CaptureView({
         const result = lm.detectForVideo(video, nowMs);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const landmarks = result.landmarks?.[0] as NormalizedLandmark[] | undefined;
-        const cap = landmarks ? isCapturable(landmarks) : false;
+        const cap = landmarks ? isCapturable(landmarks, sport) : false;
         if (cap !== capturableRef.current) {
           capturableRef.current = cap;
           setCapturable(cap);
@@ -236,25 +277,39 @@ export function CaptureView({
               keypoints: landmarksToKeypoints(landmarks),
             });
 
-            // Track the highest wrist to detect when the shot is finished.
-            const lw = landmarks[LM.lWrist];
-            const rw = landmarks[LM.rWrist];
-            const ly = lw && isVisible(lw) ? lw.y : Infinity;
-            const ry = rw && isVisible(rw) ? rw.y : Infinity;
-            const wristY = Math.min(ly, ry); // smaller y = higher hand
-            if (Number.isFinite(wristY)) {
-              if (!Number.isFinite(shotBaseYRef.current)) shotBaseYRef.current = wristY;
-              if (wristY < apexYRef.current) {
-                apexYRef.current = wristY;
-                apexTRef.current = tRec;
-              }
-              if (!shotArmedRef.current && shotBaseYRef.current - apexYRef.current >= ARM_RISE) {
-                shotArmedRef.current = true; // a genuine upward shot motion happened
-              }
-              const descended = wristY - apexYRef.current >= DESCEND_MARGIN;
-              const dwelled = tRec - apexTRef.current >= FOLLOW_DWELL_MS;
-              if (shotArmedRef.current && tRec >= MIN_RECORD_MS && descended && dwelled) {
-                finishRecordingRef.current(); // shot done — stop and analyze now
+            // Basketball has a reliable vertical wrist apex. Pitching and
+            // quarterback throws move mainly across the frame, so they keep
+            // the complete five-second window instead of stopping early.
+            if (sport === "basketball") {
+              const lw = landmarks[LM.lWrist];
+              const rw = landmarks[LM.rWrist];
+              const ly = lw && isVisible(lw) ? lw.y : Infinity;
+              const ry = rw && isVisible(rw) ? rw.y : Infinity;
+              const wristY = Math.min(ly, ry); // smaller y = higher hand
+              if (Number.isFinite(wristY)) {
+                if (!Number.isFinite(shotBaseYRef.current)) {
+                  shotBaseYRef.current = wristY;
+                }
+                if (wristY < apexYRef.current) {
+                  apexYRef.current = wristY;
+                  apexTRef.current = tRec;
+                }
+                if (
+                  !shotArmedRef.current &&
+                  shotBaseYRef.current - apexYRef.current >= ARM_RISE
+                ) {
+                  shotArmedRef.current = true;
+                }
+                const descended = wristY - apexYRef.current >= DESCEND_MARGIN;
+                const dwelled = tRec - apexTRef.current >= FOLLOW_DWELL_MS;
+                if (
+                  shotArmedRef.current &&
+                  tRec >= MIN_RECORD_MS &&
+                  descended &&
+                  dwelled
+                ) {
+                  finishRecordingRef.current();
+                }
               }
             }
           }
@@ -263,7 +318,7 @@ export function CaptureView({
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [ready, videoRef]);
+  }, [ready, sport, videoRef]);
 
   // Keep the latest onCapture/build options without retriggering the recording
   // effect (finishRecording must stay referentially stable).
@@ -385,7 +440,8 @@ export function CaptureView({
 
   const recording = phase === "recording";
   const recordDisabled = !ready || (!recording && !capturable);
-  const movement = sport === "baseball" ? "pitch" : "shot";
+  const movement = SPORTS[sport].movement;
+  const copy = CAPTURE_COPY[sport];
   const cameraStatus = recording
     ? "Recording"
     : phase === "countdown"
@@ -407,12 +463,17 @@ export function CaptureView({
       <div className="relative min-h-[22rem] overflow-hidden bg-black sm:min-h-[30rem] lg:min-h-[42rem]">
         {/* Mirror both layers so the selfie view and skeleton stay aligned. */}
         <video
+          aria-label={`${SPORTS[sport].label} camera preview`}
           ref={videoRef}
           className="absolute inset-0 h-full w-full -scale-x-100 object-contain"
           playsInline
           muted
         />
-        <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 h-full w-full -scale-x-100" />
+        <canvas
+          aria-hidden="true"
+          ref={canvasRef}
+          className="pointer-events-none absolute inset-0 h-full w-full -scale-x-100"
+        />
 
         {recording && (
           <span className="absolute left-4 top-4 flex items-center gap-2 rounded-md border border-white/15 bg-black/75 px-3 py-2 font-mono text-xs font-medium tracking-[0.16em] text-white">
@@ -439,13 +500,18 @@ export function CaptureView({
         />
 
         {phase === "countdown" && (
-          <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/30">
+          <div
+            aria-atomic="true"
+            aria-live="assertive"
+            className="pointer-events-none absolute inset-0 grid place-items-center bg-black/30"
+            role="status"
+          >
             <div className="text-center">
               <span className="block font-heading text-8xl font-semibold leading-none text-white drop-shadow-[0_0_24px_rgba(0,0,0,0.7)] sm:text-9xl">
                 {count}
               </span>
               <span className="mt-2 block text-sm font-medium text-white/80">
-                Get ready to {sport === "baseball" ? "pitch" : "shoot"}…
+                Get ready to {copy.action}…
               </span>
             </div>
           </div>
@@ -472,9 +538,7 @@ export function CaptureView({
             Show us your {movement}.
           </h1>
           <p className="mt-4 text-sm leading-6 text-muted-foreground">
-            {sport === "baseball"
-              ? "Record a side-view pitch. Echo tracks your delivery from leg lift through release."
-              : "Record a side-view shot. Echo tracks your mechanics from dip through release."}
+            {copy.description}
           </p>
         </div>
 
@@ -486,7 +550,7 @@ export function CaptureView({
             <div>
               <p className="text-sm font-medium">Get side-on</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                About an arm&apos;s length from the screen
+                {copy.setup}
               </p>
             </div>
           </div>
@@ -497,9 +561,7 @@ export function CaptureView({
             <div>
               <p className="text-sm font-medium">Keep your full motion in frame</p>
               <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-                {sport === "baseball"
-                  ? "Include your hips, glove and stride"
-                  : "Include your hips, knees and shooting arm"}
+                {copy.framing}
               </p>
             </div>
           </div>

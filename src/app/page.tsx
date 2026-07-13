@@ -7,15 +7,24 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-import { BaseballShowcase, HeroShowcase } from "@/components/overlay";
+import {
+  BaseballShowcase,
+  FootballShowcase,
+  HeroShowcase,
+} from "@/components/overlay";
 import { buttonVariants } from "@/components/ui/button";
-import { parseSport, SPORTS, sportHref } from "@/lib/sports";
+import {
+  parseSport,
+  SPORTS,
+  sportHref,
+  type SportId,
+} from "@/lib/sports";
 import { cn } from "@/lib/utils";
 
-function uploadHref(sport: "basketball" | "baseball") {
-  return sport === "baseball"
-    ? "/capture?sport=baseball&mode=upload"
-    : "/capture?mode=upload";
+function SportShowcase({ sport }: { sport: SportId }) {
+  if (sport === "baseball") return <BaseballShowcase compact />;
+  if (sport === "football") return <FootballShowcase compact />;
+  return <HeroShowcase />;
 }
 
 export default async function Home({
@@ -49,7 +58,7 @@ export default async function Home({
             </p>
           </div>
 
-          {sport === "baseball" ? <BaseballShowcase compact /> : <HeroShowcase />}
+          <SportShowcase sport={sport} />
 
           <div className="grid gap-5 border-b border-border py-6 lg:grid-cols-[auto_1fr_auto] lg:items-center">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -69,7 +78,7 @@ export default async function Home({
                   buttonVariants({ variant: "outline" }),
                   "h-16 justify-start rounded-md bg-transparent px-7 text-base font-medium hover:border-primary hover:bg-primary/5 sm:min-w-72",
                 )}
-                href={uploadHref(sport)}
+                href={sportHref("/capture", sport, "mode=upload")}
               >
                 <Upload aria-hidden="true" className="size-5" />
                 Upload video

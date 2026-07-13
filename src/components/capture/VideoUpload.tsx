@@ -12,10 +12,19 @@ import {
 
 import { Button } from "@/components/ui/button";
 import type { ShotCapture } from "@/lib/contracts";
-import type { SportId } from "@/lib/sports";
+import { SPORTS, type SportId } from "@/lib/sports";
 
 const MAX_FILE_BYTES = 7_000_000;
 const MAX_ANALYSIS_SECONDS = 8;
+
+const UPLOAD_DESCRIPTION: Record<SportId, string> = {
+  basketball:
+    "Upload a side-view shot. Echo tracks your mechanics from dip through release.",
+  baseball:
+    "Upload a side-view pitch. Echo tracks your delivery from leg lift through release.",
+  football:
+    "Upload a throwing-side quarterback pass. Echo tracks your sequence from set through foot plant and release.",
+};
 
 function isVideoFile(file: File): boolean {
   return (
@@ -44,7 +53,7 @@ export function VideoUpload({
   const [progress, setProgress] = useState(0);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const movement = sport === "baseball" ? "pitch" : "shot";
+  const movement = SPORTS[sport].movement;
 
   useEffect(
     () => () => {
@@ -172,9 +181,7 @@ export function VideoUpload({
             Show us your {movement}.
           </h1>
           <p className="mt-4 text-sm leading-6 text-muted-foreground">
-            {sport === "baseball"
-              ? "Upload a side-view pitch. Echo tracks your delivery from leg lift through release."
-              : "Upload a side-view shot. Echo tracks your mechanics from dip through release."}
+            {UPLOAD_DESCRIPTION[sport]}
           </p>
         </div>
 

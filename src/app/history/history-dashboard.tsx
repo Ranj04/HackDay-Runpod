@@ -13,7 +13,7 @@ import {
   type PersistenceMode,
 } from "@/lib/db";
 import { loadSessionsAction } from "@/lib/db/server";
-import { SPORTS, type SportId } from "@/lib/sports";
+import { SPORTS, SPORT_IDS, sportHref, type SportId } from "@/lib/sports";
 import { cn } from "@/lib/utils";
 
 import { signOut } from "../auth/actions";
@@ -30,9 +30,9 @@ export function HistoryDashboard({ sport }: { sport: SportId }) {
 
   useEffect(() => {
     // Saved sessions predate multi-sport support and have no sport column. Do
-    // not present basketball records as pitches until the schema can identify
-    // them truthfully.
-    if (sport === "baseball") return;
+    // not present basketball records as pitches or throws until the schema can
+    // identify them truthfully.
+    if (sport !== "basketball") return;
 
     let active = true;
 
@@ -74,14 +74,22 @@ export function HistoryDashboard({ sport }: { sport: SportId }) {
       </div>
     ) : null;
 
-  if (sport === "baseball") {
+  if (sport !== "basketball") {
+    const isFootball = sport === "football";
+
     return (
       <HistoryFrame accountControls={accountControls} sport={sport}>
         <EmptyState
-          body="Record a pitch to start your delivery history."
-          href="/capture?sport=baseball"
-          linkLabel="Record a pitch"
-          title="No saved pitches yet."
+          body={
+            isFootball
+              ? "Record a throw to start your quarterback history."
+              : "Record a pitch to start your delivery history."
+          }
+          href={sportHref("/capture", sport)}
+          linkLabel={isFootball ? "Record a throw" : "Record a pitch"}
+          title={
+            isFootball ? "No saved throws yet." : "No saved pitches yet."
+          }
         />
       </HistoryFrame>
     );
@@ -160,18 +168,18 @@ function HistoryFrame({
       <div className="mb-10 flex flex-col gap-5 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
         <nav
           aria-label="Choose progress sport"
-          className="grid w-fit grid-cols-2 overflow-hidden rounded-lg border border-border bg-background p-1"
+          className="grid w-full grid-cols-3 overflow-hidden rounded-lg border border-border bg-background p-1 sm:w-fit"
         >
-          {(["basketball", "baseball"] as const).map((id) => (
+          {SPORT_IDS.map((id) => (
             <Link
               aria-current={sport === id ? "page" : undefined}
               className={cn(
-                "min-w-28 rounded-md px-4 py-2 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "min-w-0 rounded-md px-2 py-2 text-center text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-w-28 sm:px-4 sm:text-sm",
                 sport === id
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
-              href={id === "basketball" ? "/history" : "/history?sport=baseball"}
+              href={sportHref("/history", id)}
               key={id}
             >
               {SPORTS[id].label}
