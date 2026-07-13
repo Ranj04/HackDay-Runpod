@@ -26,6 +26,12 @@ export interface ResultsViewProps {
   coaching: CoachingResult;
   echoOverlay?: ReactNode;
   saveAction?: ReactNode;
+  metricLabels?: readonly [string, string];
+  scoreBlurb?: string;
+  scoreLabel?: string;
+  retryHref?: string;
+  retryLabel?: string;
+  showSaveAction?: boolean;
 }
 
 const severityLabel = {
@@ -39,6 +45,12 @@ export function ResultsView({
   coaching,
   echoOverlay,
   saveAction,
+  metricLabels = ["Your release", "Reference"],
+  scoreBlurb = "Solid base. One clear focus.",
+  scoreLabel = "Form score",
+  retryHref = "/capture",
+  retryLabel = "Try another shot",
+  showSaveAction = true,
 }: ResultsViewProps) {
   const { topFlaw } = analysis;
 
@@ -48,7 +60,7 @@ export function ResultsView({
         <Card className="border-0 bg-card text-card-foreground ring-foreground/10">
           <CardHeader>
             <CardDescription className="text-muted-foreground">
-              Form score
+              {scoreLabel}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center pb-7">
@@ -73,11 +85,11 @@ export function ResultsView({
             </div>
             <div className="mt-6 flex items-center gap-2 text-sm text-link">
               <Sparkles className="size-4" />
-              Solid base. One clear focus.
+              {scoreBlurb}
             </div>
             <div className="mt-7 grid w-full grid-cols-2 gap-3">
-              <Metric label="Your release" value={`${topFlaw.observed}°`} />
-              <Metric label="Reference" value={`${topFlaw.reference}°`} accent />
+              <Metric label={metricLabels[0]} value={`${topFlaw.observed}°`} />
+              <Metric label={metricLabels[1]} value={`${topFlaw.reference}°`} accent />
             </div>
           </CardContent>
         </Card>
@@ -162,11 +174,11 @@ export function ResultsView({
       <div className="flex flex-col justify-between gap-3 sm:flex-row">
         <Link
           className={cn(buttonVariants({ variant: "outline" }), "h-11 px-5")}
-          href="/capture"
+          href={retryHref}
         >
-          Try another shot
+          {retryLabel}
         </Link>
-        {saveAction ?? (
+        {showSaveAction && (saveAction ?? (
           <Link
             className={cn(buttonVariants(), "h-11 px-5 font-medium")}
             href="/history"
@@ -175,7 +187,7 @@ export function ResultsView({
             Save &amp; view progress
             <ChevronRight className="size-4" />
           </Link>
-        )}
+        ))}
       </div>
     </div>
   );

@@ -9,7 +9,9 @@ import Link from "next/link";
 import { LoaderCircle } from "lucide-react";
 
 import { EchoOverlay } from "@/components/overlay";
+import { BaseballShowcase } from "@/components/overlay";
 import { ResultsView } from "@/components/results";
+import { baseballSampleAnalysis, baseballSampleCoaching } from "@/lib/baseball-sample";
 import { loadCapture, loadCapturedClip } from "@/lib/capture-store";
 import {
   AnalysisResultSchema,
@@ -18,6 +20,7 @@ import {
   type CoachingResult,
 } from "@/lib/contracts";
 import { mockShotCapture } from "@/lib/sample-shot";
+import type { SportId } from "@/lib/sports";
 
 import { analyzeAndCoach } from "../capture/actions";
 import { SaveSessionButton } from "./save-session-button";
@@ -38,7 +41,32 @@ type State =
       upgrading?: boolean; // instant browser result shown; GPU pass in flight
     };
 
-export function ResultsClient() {
+export function ResultsClient({ sport }: { sport: SportId }) {
+  if (sport === "baseball") {
+    return (
+      <div className="space-y-6">
+        <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-muted-foreground">
+          Sample pitch — live baseball capture is coming next.
+        </p>
+        <ResultsView
+          analysis={baseballSampleAnalysis}
+          coaching={baseballSampleCoaching}
+          echoOverlay={<BaseballShowcase />}
+          metricLabels={["Your separation", "Reference"]}
+          scoreBlurb="Good rhythm. Keep the front side closed."
+          scoreLabel="Delivery score"
+          retryHref="/?sport=baseball"
+          retryLabel="Back to baseball"
+          showSaveAction={false}
+        />
+      </div>
+    );
+  }
+
+  return <BasketballResultsClient />;
+}
+
+function BasketballResultsClient() {
   const [state, setState] = useState<State>({ phase: "loading" });
   // Guard against double-run (React strict mode / fast refresh).
   const started = useRef(false);
