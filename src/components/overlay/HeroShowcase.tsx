@@ -6,16 +6,27 @@ import sample from "../../../fixtures/sample-shot.json";
 import { analyzeShot } from "@/lib/analysis";
 import { ShotCaptureSchema, type AnalysisResult } from "@/lib/contracts";
 
-import { EchoOverlay } from "./EchoOverlay";
+import {
+  BASKETBALL_HERO_SIZES,
+  BasketballScene,
+  EchoOverlay,
+} from "./EchoOverlay";
 
-function LoadingFilmRoom() {
+function LoadingFilmRoom({ height }: { height: number }) {
   return (
-    <div className="relative flex min-h-80 items-center justify-center overflow-hidden rounded-md border border-border bg-[var(--ink)] sm:min-h-[30rem]">
-      <div className="capture-grid absolute inset-0 opacity-25" />
-      <div className="relative flex items-center gap-3 font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">
-        <span className="size-2 animate-pulse bg-primary" />
-        Aligning sample motion
+    <div className="overflow-hidden rounded-md border border-border bg-[var(--ink)]">
+      <div className="relative" style={{ height }}>
+        <BasketballScene preload sizes={BASKETBALL_HERO_SIZES} />
+        <div
+          aria-live="polite"
+          className="absolute bottom-5 left-5 z-20 flex items-center gap-3 border border-border bg-background/90 px-3 py-2 font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground"
+          role="status"
+        >
+          <span className="size-2 animate-pulse bg-primary" />
+          Aligning sample motion
+        </div>
       </div>
+      <div aria-hidden="true" className="h-20 border-t border-border bg-background" />
     </div>
   );
 }
@@ -61,10 +72,13 @@ export function HeroShowcase() {
           className="w-full"
           height={size.height}
           result={result}
+          scene
+          scenePreload
+          sceneSizes={BASKETBALL_HERO_SIZES}
           width={size.width}
         />
       ) : (
-        <LoadingFilmRoom />
+        <LoadingFilmRoom height={size.height} />
       )}
     </section>
   );

@@ -1,6 +1,12 @@
 // PERSON A (works on main) — overlay component surface. See OWNERSHIP.md.
 export { EchoOverlay, type EchoOverlayProps } from "./EchoOverlay";
 export { HeroShowcase } from "./HeroShowcase";
+export {
+  AthleteFilmRoom,
+  type AthleteFilmRoomProps,
+  type AthleteJoint,
+  type AthletePose,
+} from "./AthleteFilmRoom";
 export { BaseballShowcase } from "./BaseballShowcase";
 export { FootballShowcase } from "./FootballShowcase";
 export { INK, SURFACE, BONE, ECHO, SIGNAL, MUTED } from "./palette";

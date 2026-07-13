@@ -50,21 +50,19 @@ export function ResultsView({
     <section aria-label={`${scoreLabel} analysis`} className="space-y-5">
       <div className="grid border-y border-border lg:grid-cols-[minmax(0,1.65fr)_minmax(19rem,0.72fr)]">
         <div className="min-w-0 py-4 sm:py-6 lg:pr-7">
-          <div className="overflow-hidden rounded-lg border border-border bg-card p-2 sm:p-3">
-            <div className="relative grid min-h-80 place-items-center overflow-hidden rounded-md bg-background [&>*]:!w-full [&>*]:!rounded-md">
-              {echoOverlay ?? (
-                <div className="relative grid min-h-[32rem] w-full place-items-center">
-                  <div className="capture-grid absolute inset-0 opacity-25" />
-                  <div className="relative flex items-center gap-5">
-                    <div className="h-28 w-px rotate-12 bg-foreground/20 shadow-[14px_20px_0_color-mix(in_oklab,var(--foreground),transparent_80%),-10px_52px_0_color-mix(in_oklab,var(--foreground),transparent_80%)]" />
-                    <div className="h-28 w-px -rotate-6 bg-primary shadow-[10px_18px_0_var(--primary),-8px_52px_0_var(--primary)]" />
-                  </div>
-                  <span className="absolute bottom-4 left-4 text-xs font-medium text-muted-foreground">
-                    Motion comparison
-                  </span>
+          <div className="relative grid min-h-80 place-items-center overflow-hidden rounded-md bg-background [&>*]:!w-full [&>*]:!rounded-md">
+            {echoOverlay ?? (
+              <div className="relative grid min-h-[32rem] w-full place-items-center border border-border">
+                <div className="capture-grid absolute inset-0 opacity-25" />
+                <div className="relative flex items-center gap-5">
+                  <div className="h-28 w-px rotate-12 bg-foreground/20 shadow-[14px_20px_0_color-mix(in_oklab,var(--foreground),transparent_80%),-10px_52px_0_color-mix(in_oklab,var(--foreground),transparent_80%)]" />
+                  <div className="h-28 w-px -rotate-6 bg-primary shadow-[10px_18px_0_var(--primary),-8px_52px_0_var(--primary)]" />
                 </div>
-              )}
-            </div>
+                <span className="absolute bottom-4 left-4 text-xs font-medium text-muted-foreground">
+                  Motion comparison
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

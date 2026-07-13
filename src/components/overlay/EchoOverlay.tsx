@@ -4,11 +4,18 @@
 // frame-interpolated loop so it reads as a person actually shooting.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
+import Image from "next/image";
+
+import basketballRelease from "@/assets/sports/basketball-release.webp";
 import { detectShootingSide } from "@/lib/analysis";
 import { alignToReference } from "@/lib/analysis/align";
 import { GOOD_FORM_FRAMES } from "@/lib/analysis/reference";
 import { isVisible } from "@/lib/vision/visibility";
 import type { AnalysisResult, PoseFrame, ShotCapture } from "@/lib/contracts";
+import {
+  AthletePoseOverlay,
+  type AthletePose,
+} from "./AthleteFilmRoom";
 import {
   drawBackdrop,
   drawBall,
@@ -28,6 +35,69 @@ export interface EchoOverlayProps {
   className?: string;
   /** Canvas only — no chrome or playback controls (e.g. landing hero). */
   compact?: boolean;
+  /** Render the basketball film-room scene beneath the live canvas. */
+  scene?: boolean;
+  scenePreload?: boolean;
+  sceneSizes?: string;
+}
+
+export const BASKETBALL_HERO_SIZES =
+  "(max-width: 639px) calc(100vw - 2.5rem), (max-width: 1535px) calc(100vw - 4rem), 1472px";
+
+const BASKETBALL_RESULTS_SIZES =
+  "(max-width: 639px) calc(100vw - 2.5rem), (max-width: 1023px) calc(100vw - 4rem), (max-width: 1439px) 68vw, 958px";
+
+const BASKETBALL_OBSERVED_POSE: AthletePose = {
+  head: [986, 262],
+  leftShoulder: [930, 326],
+  rightShoulder: [980, 335],
+  leftElbow: [862, 283],
+  rightElbow: [925, 260],
+  leftWrist: [813, 171],
+  rightWrist: [875, 172],
+  leftHip: [905, 505],
+  rightHip: [958, 503],
+  leftKnee: [882, 612],
+  rightKnee: [934, 615],
+  leftAnkle: [875, 732],
+  rightAnkle: [945, 731],
+};
+
+const BASKETBALL_REFERENCE_POSE: AthletePose = {
+  head: [994, 259],
+  leftShoulder: [938, 320],
+  rightShoulder: [987, 329],
+  leftElbow: [869, 269],
+  rightElbow: [933, 250],
+  leftWrist: [821, 158],
+  rightWrist: [883, 162],
+  leftHip: [913, 500],
+  rightHip: [965, 497],
+  leftKnee: [889, 607],
+  rightKnee: [941, 608],
+  leftAnkle: [881, 729],
+  rightAnkle: [951, 727],
+};
+
+export function BasketballScene({
+  preload = false,
+  sizes = BASKETBALL_RESULTS_SIZES,
+}: {
+  preload?: boolean;
+  sizes?: string;
+}) {
+  return (
+    <Image
+      alt=""
+      className="z-0 object-cover object-center"
+      draggable={false}
+      fill
+      placeholder="blur"
+      preload={preload}
+      sizes={sizes}
+      src={basketballRelease}
+    />
+  );
 }
 
 // Draw the echo from the clean hand-authored exemplar. The active SCORING
@@ -60,7 +130,16 @@ function lerpFrame(a: PoseFrame, b: PoseFrame, t: number): PoseFrame {
   };
 }
 
-export function EchoOverlay({ result, width = 440, height = 560, className, compact = false }: EchoOverlayProps) {
+export function EchoOverlay({
+  result,
+  width = 440,
+  height = 560,
+  className,
+  compact = false,
+  scene = true,
+  scenePreload = true,
+  sceneSizes = BASKETBALL_RESULTS_SIZES,
+}: EchoOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const frames = result.capture.frames;
   const total = frames.length;
@@ -114,14 +193,17 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
     posRef.current = 0;
   }, [result.capture.id, total]);
 
-  // Place the echo to the RIGHT of the player as a clean side-by-side "you vs
-  // ideal" instead of superimposed (which tangles the two figures) — everywhere,
-  // including the compact landing hero, so Shot 01's echo matches the results.
-  const sideBySide = echoFrames.length > 0;
+  // On the plain analysis stage, separate the two figures for clarity. Over the
+  // rendered athlete, align both tracks directly to the body like a form scan.
+  const sideBySide = !scene && echoFrames.length > 0;
 
   // Stable fit transform (centers + scales) from all visible poses, accounting
   // for the echo's horizontal shift so both figures fit and stay centered.
   const fit = useMemo(() => {
+    if (scene) {
+      return { s: 1, cx: width / 2, cy: height / 2, echoShift: 0 };
+    }
+
     const bbox = (arr: PoseFrame[]) => {
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       for (const f of arr) {
@@ -137,6 +219,7 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
     };
     const u = bbox(frames);
     if (!Number.isFinite(u.minX)) return { s: 1, cx: width / 2, cy: height / 2, echoShift: 0 };
+
     const e = echoFrames.length ? bbox(echoFrames) : null;
     const hasEcho = e !== null && Number.isFinite(e.minX);
     const GAP = 0.1; // normalized gap between the two figures
@@ -153,7 +236,14 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
     const floor = sideBySide ? 0.5 : 0.9; // let two figures shrink to fit
     const s = Math.max(floor, Math.min(2.8, Math.min((width * widthFactor) / bwPx, (height * 0.82) / bhPx)));
     return { s, cx: ((minX + maxX) / 2) * width, cy: ((minY + maxY) / 2) * height, echoShift };
-  }, [frames, echoFrames, width, height, sideBySide]);
+  }, [
+    frames,
+    echoFrames,
+    width,
+    height,
+    scene,
+    sideBySide,
+  ]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -171,7 +261,7 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
     if (!ctx) return;
     if (total === 0) {
       ctx.clearRect(0, 0, width, height);
-      drawBackdrop(ctx, width, height);
+      if (!scene) drawBackdrop(ctx, width, height);
       drawVignette(ctx, width, height);
       return;
     }
@@ -204,6 +294,10 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
 
     const draw = (pos: number, now: number) => {
       ctx.clearRect(0, 0, width, height);
+      if (scene) {
+        drawVignette(ctx, width, height);
+        return;
+      }
       drawBackdrop(ctx, width, height);
       const intro = reduced ? 1 : easeOutCubic(Math.min(1, (now - start) / 600));
       const user = frameAt(frames, pos);
@@ -224,9 +318,11 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
         ctx.restore();
       }
       drawPlayer(ctx, user, width, height, flawKeys);
-      const ballR = Math.max(7, torsoLengthPx(user, width, height) * 0.17);
-      const ball = ballAt(pos, user);
-      if (ball) drawBall(ctx, ball.x * width, ball.y * height, ballR);
+      if (!scene) {
+        const ballR = Math.max(7, torsoLengthPx(user, width, height) * 0.17);
+        const ball = ballAt(pos, user);
+        if (ball) drawBall(ctx, ball.x * width, ball.y * height, ballR);
+      }
       if (flawJoint && pos >= releaseIndex - 1) {
         const pulse = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(now / 420);
         drawFlawMarker(ctx, user, width, height, flawJoint, pulse);
@@ -271,7 +367,7 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
     }
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [result, frames, echoFrames, total, fps, releaseIndex, playEnd, flawKeys, flawJoint, shootWrist, fit, width, height]);
+  }, [result, frames, echoFrames, total, fps, releaseIndex, playEnd, flawKeys, flawJoint, shootWrist, fit, width, height, scene]);
 
   const releasePct = playEnd > 0 ? (Math.min(releaseIndex, playEnd) / playEnd) * 100 : 0;
   const posPct = playEnd > 0 ? (Math.min(index, playEnd) / playEnd) * 100 : 0;
@@ -302,13 +398,23 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
           className={compact ? "relative h-full w-full" : "relative"}
           style={compact ? undefined : { width, height }}
         >
+          {scene ? (
+            <BasketballScene preload={scenePreload} sizes={sceneSizes} />
+          ) : null}
           <canvas
             ref={canvasRef}
-            className="block"
+            className="relative z-10 block"
             style={compact ? { width: "100%", height: "100%" } : undefined}
           />
+          {scene ? (
+            <AthletePoseOverlay
+              focusJoint="rightElbow"
+              observedPose={BASKETBALL_OBSERVED_POSE}
+              referencePose={BASKETBALL_REFERENCE_POSE}
+            />
+          ) : null}
           {!compact && (
-            <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-4 p-4 sm:p-6">
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-4 p-4 sm:p-6">
               <div className="border-l-2 border-accent-brand pl-3 font-mono text-[0.65rem] uppercase tracking-[0.14em] text-foreground">
                 <span className="block text-muted-foreground">Film room 01</span>
                 Side view
@@ -324,7 +430,7 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
             </div>
           )}
           {!compact && Math.abs(index - releaseIndex) <= 1 && (
-            <span className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 border border-accent-brand bg-background/90 px-2 py-1 font-mono text-[0.6rem] uppercase tracking-[0.12em] text-accent-brand sm:bottom-6">
+            <span className="pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 border border-accent-brand bg-background/90 px-2 py-1 font-mono text-[0.6rem] uppercase tracking-[0.12em] text-accent-brand sm:bottom-6">
               Release checkpoint
             </span>
           )}
