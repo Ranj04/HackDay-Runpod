@@ -24,7 +24,17 @@ function PitcherFigure({ echo = false }: { echo?: boolean }) {
   );
 }
 
-export function BaseballShowcase({ compact = false }: { compact?: boolean }) {
+export function BaseballShowcase({
+  compact = false,
+  score = 68,
+  observed = 28,
+  reference = 42,
+}: {
+  compact?: boolean;
+  score?: number;
+  observed?: number;
+  reference?: number;
+}) {
   return (
     <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-card shadow-2xl shadow-black/30">
       <div className="capture-grid absolute inset-0 opacity-20" />
@@ -33,7 +43,7 @@ export function BaseballShowcase({ compact = false }: { compact?: boolean }) {
           <span className="size-2 rounded-full bg-accent-brand shadow-[0_0_12px_var(--orange)]" />
           Pitch 01 · side view
         </span>
-        <span className="font-mono">68 / 100</span>
+        <span className="font-mono">{score} / 100</span>
       </div>
       <div className={compact ? "relative h-[25rem]" : "relative h-[32rem]"}>
         <div className="absolute inset-x-8 top-8 flex items-center justify-center gap-2 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
@@ -48,11 +58,11 @@ export function BaseballShowcase({ compact = false }: { compact?: boolean }) {
         <div className="absolute inset-x-5 bottom-5 grid grid-cols-2 gap-3">
           <div className="rounded-xl border border-white/10 bg-background/70 p-3 backdrop-blur">
             <span className="text-[0.65rem] uppercase tracking-[0.16em] text-muted-foreground">You</span>
-            <strong className="mt-1 flex items-center gap-2 font-mono text-xl">28° <Gauge className="size-4 text-accent-brand" /></strong>
+            <strong className="mt-1 flex items-center gap-2 font-mono text-xl">{observed}° <Gauge className="size-4 text-accent-brand" /></strong>
           </div>
           <div className="rounded-xl border border-primary/25 bg-primary/10 p-3 backdrop-blur">
             <span className="text-[0.65rem] uppercase tracking-[0.16em] text-muted-foreground">Reference</span>
-            <strong className="mt-1 block font-mono text-xl text-primary">42°</strong>
+            <strong className="mt-1 block font-mono text-xl text-primary">{reference}°</strong>
           </div>
         </div>
       </div>

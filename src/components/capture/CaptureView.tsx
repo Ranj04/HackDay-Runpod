@@ -13,6 +13,7 @@ import { buildCapture } from "@/lib/vision/buildCapture";
 import { isVisible, isVisibleForFraming } from "@/lib/vision/visibility";
 import { detectRelease, detectShootingSide } from "@/lib/analysis/detectRelease";
 import type { PoseFrame, ShotCapture } from "@/lib/contracts";
+import type { SportId } from "@/lib/sports";
 
 export interface CaptureViewProps {
   onCapture?: (capture: ShotCapture, clip?: Blob) => void;
@@ -21,6 +22,7 @@ export interface CaptureViewProps {
   targetFps?: number;
   /** Decimal places for normalized coords (default 4); `null` keeps full precision. */
   precision?: number | null;
+  sport?: SportId;
 }
 
 const POSE_CONNECTIONS = PoseLandmarker.POSE_CONNECTIONS as { start: number; end: number }[];
@@ -116,7 +118,13 @@ function isCapturable(landmarks: NormalizedLandmark[]): boolean {
   return torso && arm && leg;
 }
 
-export function CaptureView({ onCapture, className, targetFps, precision }: CaptureViewProps) {
+export function CaptureView({
+  onCapture,
+  className,
+  targetFps,
+  precision,
+  sport = "basketball",
+}: CaptureViewProps) {
   const { videoRef, stream, error, start, stop } = useCamera();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const landmarkerRef = useRef<PoseLandmarker | null>(null);
@@ -246,19 +254,24 @@ export function CaptureView({ onCapture, className, targetFps, precision }: Capt
   // Keep the latest onCapture/build options without retriggering the recording
   // effect (finishRecording must stay referentially stable).
   const onCaptureRef = useRef(onCapture);
-  const buildOptsRef = useRef({ targetFps, precision });
+  const buildOptsRef = useRef({ targetFps, precision, sport });
   useEffect(() => {
     onCaptureRef.current = onCapture;
-    buildOptsRef.current = { targetFps, precision };
-  }, [onCapture, targetFps, precision]);
+    buildOptsRef.current = { targetFps, precision, sport };
+  }, [onCapture, targetFps, precision, sport]);
 
   const finishRecording = useCallback(() => {
     if (!recordingRef.current) return;
     recordingRef.current = false;
     // Trim trailing movement so the capture ends on the follow-through.
-    const capture = buildCapture(trimToFollowThrough(bufferRef.current), {
+    const sourceFrames =
+      buildOptsRef.current.sport === "basketball"
+        ? trimToFollowThrough(bufferRef.current)
+        : bufferRef.current;
+    const capture = buildCapture(sourceFrames, {
       view: "side",
-      ...buildOptsRef.current,
+      targetFps: buildOptsRef.current.targetFps,
+      precision: buildOptsRef.current.precision,
     });
     setPhase("idle");
     const recorder = recorderRef.current;
@@ -399,7 +412,7 @@ export function CaptureView({ onCapture, className, targetFps, precision }: Capt
                 {count}
               </span>
               <span className="mt-2 block text-sm font-medium text-white/80">
-                Get ready to shoot…
+                Get ready to {sport === "baseball" ? "pitch" : "shoot"}…
               </span>
             </div>
           </div>

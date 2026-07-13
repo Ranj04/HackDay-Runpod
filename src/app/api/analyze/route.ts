@@ -1,6 +1,11 @@
 import { analyzeShot, coachFlaw } from "@/lib/core";
+import {
+  analyzeBaseballPitch,
+  coachBaseballPitch,
+} from "@/lib/analysis/baseball";
 import { ShotCaptureSchema } from "@/lib/contracts";
 import { poseClipOnGpu } from "@/lib/flash/client";
+import { parseSport } from "@/lib/sports";
 import {
   captureError,
   log,
@@ -40,6 +45,7 @@ async function handle(request: Request): Promise<Response> {
       JSON.parse(String(form.get("capture") ?? "")),
     );
     const clip = form.get("clip");
+    const sport = parseSport(String(form.get("sport") ?? ""));
 
     if (clip instanceof Blob && clip.size > 0) {
       if (clip.size > MAX_CLIP_BYTES) {
@@ -82,8 +88,14 @@ async function handle(request: Request): Promise<Response> {
       warning = "No recorded clip was available for GPU pose";
     }
 
-    const analysis = await analyzeShot(capture);
-    const coaching = await coachFlaw(analysis.topFlaw);
+    const analysis =
+      sport === "baseball"
+        ? analyzeBaseballPitch(capture)
+        : await analyzeShot(capture);
+    const coaching =
+      sport === "baseball"
+        ? coachBaseballPitch(analysis.topFlaw)
+        : await coachFlaw(analysis.topFlaw);
 
     log("info", "analyze.done", {
       durationMs: Date.now() - startedAt,
@@ -91,6 +103,7 @@ async function handle(request: Request): Promise<Response> {
       gpuMs,
       modelLoadMs,
       topFlaw: analysis.topFlaw?.id,
+      sport,
       degraded: Boolean(warning),
     });
 

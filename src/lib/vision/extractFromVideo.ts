@@ -41,12 +41,30 @@ function whenMetadataReady(video: HTMLVideoElement): Promise<void> {
 
 /** Seek to `time` (s) and resolve once the frame at that position is decoded. */
 function seekTo(video: HTMLVideoElement, time: number): Promise<void> {
-  return new Promise((resolve) => {
+  if (Math.abs(video.currentTime - time) < 1e-4 && video.readyState >= 2) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
     const onSeeked = () => {
-      video.removeEventListener("seeked", onSeeked);
+      cleanup();
       resolve();
     };
+    const onLoaded = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error("Could not decode a frame from the video"));
+    };
+    const cleanup = () => {
+      video.removeEventListener("seeked", onSeeked);
+      video.removeEventListener("loadeddata", onLoaded);
+      video.removeEventListener("error", onError);
+    };
     video.addEventListener("seeked", onSeeked);
+    video.addEventListener("loadeddata", onLoaded);
+    video.addEventListener("error", onError);
     video.currentTime = time;
   });
 }
