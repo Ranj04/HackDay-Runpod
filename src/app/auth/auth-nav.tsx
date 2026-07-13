@@ -23,7 +23,7 @@ export async function AuthNav() {
     return (
       <Link
         href="/auth"
-        className="ml-1 rounded-full bg-primary px-3.5 py-2 font-medium text-primary-foreground transition hover:bg-primary/90"
+        className="inline-flex h-11 items-center rounded-md border border-border px-5 font-medium text-foreground transition hover:border-primary hover:bg-primary/10"
       >
         Sign in
       </Link>
@@ -31,11 +31,11 @@ export async function AuthNav() {
   }
 
   return (
-    <div className="ml-1 flex items-center gap-2">
+    <div className="flex items-center gap-2">
       <span className="hidden text-xs text-muted-foreground sm:inline">{email}</span>
       <form action={signOut}>
         <button
-          className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 font-medium text-primary-foreground transition hover:bg-primary/90"
+          className="inline-flex h-11 items-center gap-1.5 rounded-md border border-border px-4 font-medium text-foreground transition hover:border-primary hover:bg-primary/10"
           type="submit"
         >
           <LogOut className="size-3.5" />

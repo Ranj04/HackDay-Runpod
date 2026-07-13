@@ -275,61 +275,110 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
 
   const releasePct = playEnd > 0 ? (Math.min(releaseIndex, playEnd) / playEnd) * 100 : 0;
   const posPct = playEnd > 0 ? (Math.min(index, playEnd) / playEnd) * 100 : 0;
+  const elapsed = `${(index / fps).toFixed(2).padStart(5, "0")}`;
+
+  const scrub = (value: number) => {
+    const next = (Math.max(0, Math.min(100, value)) / 100) * playEnd;
+    posRef.current = next;
+    setIndex(Math.round(next));
+    setPlaying(false);
+  };
 
   return (
     <div className={className} style={compact ? undefined : { width }}>
       <div
-        className={compact ? "relative h-full w-full overflow-hidden" : "relative overflow-hidden rounded-xl"}
+        className={
+          compact
+            ? "relative h-full w-full overflow-hidden"
+            : "overflow-hidden rounded-md border border-border bg-[var(--ink)]"
+        }
         style={
           compact
             ? undefined
-            : { width, height, border: "1px solid var(--line)" }
+            : { width }
         }
       >
-        <canvas
-          ref={canvasRef}
-          className="block"
-          style={compact ? { width: "100%", height: "100%" } : undefined}
-        />
-        {!compact && (
-          <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between p-3">
-            <span className="rounded-full px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em]" style={{ background: "rgba(255,255,255,0.05)", color: "var(--muted-ink)" }}>
-              Form vs echo
+        <div
+          className={compact ? "relative h-full w-full" : "relative"}
+          style={compact ? undefined : { width, height }}
+        >
+          <canvas
+            ref={canvasRef}
+            className="block"
+            style={compact ? { width: "100%", height: "100%" } : undefined}
+          />
+          {!compact && (
+            <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-4 p-4 sm:p-6">
+              <div className="border-l-2 border-accent-brand pl-3 font-mono text-[0.65rem] uppercase tracking-[0.14em] text-foreground">
+                <span className="block text-muted-foreground">Film room 01</span>
+                Side view
+              </div>
+              <div className="grid gap-2 bg-black/30 px-3 py-2 font-mono text-[0.62rem] uppercase tracking-[0.12em] sm:px-4">
+                <span className="flex items-center gap-3 text-foreground">
+                  <span className="h-px w-8 bg-foreground" /> You
+                </span>
+                <span className="flex items-center gap-3 text-primary">
+                  <span className="h-px w-8 bg-primary" /> Reference
+                </span>
+              </div>
+            </div>
+          )}
+          {!compact && Math.abs(index - releaseIndex) <= 1 && (
+            <span className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 border border-accent-brand bg-background/90 px-2 py-1 font-mono text-[0.6rem] uppercase tracking-[0.12em] text-accent-brand sm:bottom-6">
+              Release checkpoint
             </span>
-            {Math.abs(index - releaseIndex) <= 1 && (
-              <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ background: "var(--blue)", color: "#04080f" }}>
-                Release
+          )}
+        </div>
+
+        {!compact && (
+          <div className="border-t border-border bg-background px-4 py-4 sm:px-6">
+            <div className="flex items-center gap-4 sm:gap-6">
+              <button
+                aria-label={playing ? "Pause sample analysis" : "Play sample analysis"}
+                className="grid size-12 shrink-0 place-items-center rounded-sm border border-muted-foreground text-foreground transition hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => setPlaying((current) => !current)}
+                type="button"
+              >
+                {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
+              </button>
+              <span className="hidden min-w-20 font-mono text-xs tracking-[0.1em] text-muted-foreground sm:block">
+                00:{elapsed}
               </span>
-            )}
+              <div className="relative h-12 min-w-0 flex-1">
+                <div className="absolute inset-x-0 top-2 h-px bg-muted-foreground/70" />
+                <div
+                  className="absolute left-0 top-2 h-0.5 bg-accent-brand"
+                  style={{ width: `${posPct}%` }}
+                />
+                <span
+                  aria-hidden="true"
+                  className="absolute top-2 size-3 -translate-x-1/2 -translate-y-1/2 bg-accent-brand"
+                  style={{ left: `${posPct}%` }}
+                />
+                <input
+                  aria-label="Scrub sample analysis"
+                  className="echo-scrubber absolute inset-x-0 top-0 h-5 w-full cursor-pointer"
+                  max="100"
+                  min="0"
+                  onChange={(event) => scrub(Number(event.currentTarget.value))}
+                  type="range"
+                  value={posPct}
+                />
+                <div className="pointer-events-none absolute inset-x-0 top-5 font-mono text-[0.58rem] uppercase tracking-[0.08em] text-muted-foreground sm:text-[0.65rem]">
+                  <span className="absolute left-0">Dip</span>
+                  <span
+                    className="absolute -translate-x-1/2 text-foreground"
+                    style={{ left: `${releasePct}%` }}
+                  >
+                    Release
+                  </span>
+                  <span className="absolute right-0 hidden sm:block">Follow-through</span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
-
-      {!compact && (
-      <div className="mt-4 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setPlaying((p) => !p)}
-          className="grid size-9 shrink-0 place-items-center rounded-full text-[#04080f] transition hover:brightness-110"
-          style={{ background: "var(--blue)" }}
-          aria-label={playing ? "Pause" : "Play"}
-        >
-          {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
-        </button>
-        <div className="relative h-1 flex-1 rounded-full" style={{ background: "var(--line)" }}>
-          <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${posPct}%`, background: "var(--blue)" }} />
-          <div className="absolute top-1/2 h-2.5 w-px -translate-y-1/2" style={{ left: `${releasePct}%`, background: "var(--blue-soft)" }} title="Release" />
-        </div>
-        <div className="flex items-center gap-3 text-[11px]" style={{ color: "var(--muted-ink)" }}>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full" style={{ background: "var(--bone)" }} /> You
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full" style={{ background: "var(--blue)" }} /> Ideal
-          </span>
-        </div>
-      </div>
-      )}
     </div>
   );
 }

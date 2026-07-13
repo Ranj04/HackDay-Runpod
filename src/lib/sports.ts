@@ -15,7 +15,12 @@ export interface SportCopy {
   alignedLabel: string;
 }
 
-export const SPORTS: Record<SportId, SportCopy> = {
+export interface SportProfile extends SportCopy {
+  movement: "shot" | "pitch";
+  checkpoints: readonly [string, string, string];
+}
+
+export const SPORTS: Record<SportId, SportProfile> = {
   basketball: {
     id: "basketball",
     label: "Basketball",
@@ -30,6 +35,8 @@ export const SPORTS: Record<SportId, SportCopy> = {
     sampleHref: "/results",
     trackedLabel: "Pose tracked",
     alignedLabel: "Reference aligned",
+    movement: "shot",
+    checkpoints: ["Dip", "Release", "Follow-through"],
   },
   baseball: {
     id: "baseball",
@@ -45,9 +52,16 @@ export const SPORTS: Record<SportId, SportCopy> = {
     sampleHref: "/results?sport=baseball",
     trackedLabel: "Delivery tracked",
     alignedLabel: "Sequence aligned",
+    movement: "pitch",
+    checkpoints: ["Load", "Foot strike", "Release"],
   },
 };
 
 export function parseSport(value: string | string[] | undefined): SportId {
   return value === "baseball" ? "baseball" : "basketball";
+}
+
+/** Keep the selected sport in every athlete-facing route. */
+export function sportHref(pathname: string, sport: SportId): string {
+  return sport === "baseball" ? `${pathname}?sport=baseball` : pathname;
 }

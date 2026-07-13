@@ -1,11 +1,22 @@
-import { ArrowRight, Crosshair, ScanLine } from "lucide-react";
+import {
+  ArrowRight,
+  ScanLine,
+  ShieldCheck,
+  Upload,
+  Video,
+} from "lucide-react";
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import { BaseballShowcase, HeroShowcase } from "@/components/overlay";
-import { parseSport, SPORTS } from "@/lib/sports";
+import { buttonVariants } from "@/components/ui/button";
+import { parseSport, SPORTS, sportHref } from "@/lib/sports";
 import { cn } from "@/lib/utils";
+
+function uploadHref(sport: "basketball" | "baseball") {
+  return sport === "baseball"
+    ? "/capture?sport=baseball&mode=upload"
+    : "/capture?mode=upload";
+}
 
 export default async function Home({
   searchParams,
@@ -14,77 +25,137 @@ export default async function Home({
 }) {
   const sport = parseSport((await searchParams).sport);
   const copy = SPORTS[sport];
+  const flashConfigured = Boolean(process.env.RUNPOD_API_KEY);
 
   return (
-    <main className="relative isolate flex flex-1 overflow-hidden">
-      <div className="hero-glow absolute inset-0 -z-10" />
-      <div className="mx-auto grid w-full max-w-6xl items-center gap-14 px-5 py-16 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
-        <section>
-          <div className="mb-6 flex w-fit rounded-full border border-border bg-muted p-1" aria-label="Choose a sport">
-            {(["basketball", "baseball"] as const).map((id) => (
-              <Link
-                aria-current={sport === id ? "page" : undefined}
-                className={cn(
-                  "rounded-full px-4 py-2 text-sm font-medium transition",
-                  sport === id
-                    ? "bg-foreground text-background shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-                href={id === "basketball" ? "/" : "/?sport=baseball"}
-                key={id}
+    <main className="flex-1 overflow-hidden">
+      <div className="mx-auto w-full max-w-[1536px] px-5 pb-20 pt-10 sm:px-8 sm:pt-12 lg:pt-10">
+        <section aria-labelledby="home-title">
+          <div className="grid gap-7 pb-9 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.8fr)] lg:items-end lg:gap-16">
+            <div>
+              <p className="eyebrow mb-4">
+                {copy.label} / {copy.movement} analysis
+              </p>
+              <h1
+                className="max-w-4xl text-[clamp(3.75rem,8vw,6rem)] font-semibold leading-[0.86] tracking-[-0.065em] text-foreground"
+                id="home-title"
               >
-                {SPORTS[id].label}
+                One video. One fix.
+              </h1>
+            </div>
+            <p className="max-w-xl border-l border-border pl-6 text-lg leading-8 text-muted-foreground sm:text-xl lg:mb-2">
+              Record or upload a {copy.movement}. Echo compares your motion with
+              a reference and gives you the one correction to train next.
+            </p>
+          </div>
+
+          {sport === "baseball" ? <BaseballShowcase compact /> : <HeroShowcase />}
+
+          <div className="grid gap-5 border-b border-border py-6 lg:grid-cols-[auto_1fr_auto] lg:items-center">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Link
+                className={cn(
+                  buttonVariants(),
+                  "h-16 justify-start rounded-md bg-accent-brand px-7 text-base font-semibold text-accent-brand-foreground hover:bg-accent-brand/90 sm:min-w-72",
+                )}
+                href={sportHref("/capture", sport)}
+              >
+                <Video aria-hidden="true" className="size-5" />
+                Record a {copy.movement}
+                <ArrowRight aria-hidden="true" className="ml-auto size-4" />
               </Link>
-            ))}
-          </div>
-          <Badge
-            variant="outline"
-            className="h-7 border-border bg-muted px-3 backdrop-blur"
-          >
-            {copy.discipline}
-          </Badge>
-          <h1 className="mt-7 max-w-3xl text-6xl font-semibold leading-[0.95] tracking-[-0.065em] sm:text-7xl">
-            {copy.headline}
-            <br />
-            <span className="text-primary">{copy.accentHeadline}</span>
-          </h1>
-          <p className="mt-7 max-w-xl text-lg leading-8 text-muted-foreground">
-            {copy.description}
-          </p>
-          <div className="mt-9 flex flex-wrap items-center gap-3">
+              <Link
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "h-16 justify-start rounded-md bg-transparent px-7 text-base font-medium hover:border-primary hover:bg-primary/5 sm:min-w-72",
+                )}
+                href={uploadHref(sport)}
+              >
+                <Upload aria-hidden="true" className="size-5" />
+                Upload video
+              </Link>
+            </div>
+
+            <div className="flex flex-wrap gap-x-7 gap-y-3 font-mono text-[0.68rem] uppercase tracking-[0.12em] text-muted-foreground lg:justify-center">
+              <span className="flex items-center gap-2">
+                <span className="size-1.5 bg-primary" />
+                {copy.trackedLabel}
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="size-1.5 bg-primary" />
+                {copy.alignedLabel}
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="size-1.5 bg-primary" />
+                RunPod Flash {flashConfigured ? "connected" : "ready"}
+              </span>
+            </div>
+
             <Link
-              className={cn(
-                buttonVariants(),
-                "h-12 rounded-full bg-accent-brand px-6 font-medium text-accent-brand-foreground hover:bg-accent-brand/90",
-              )}
-              href={copy.primaryHref}
+              className="group inline-flex items-center gap-2 text-sm font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
+              href={sportHref("/results", sport)}
             >
-              {copy.primaryLabel}
-              <ArrowRight className="size-4" />
+              View sample analysis
+              <ArrowRight
+                aria-hidden="true"
+                className="size-4 transition-transform group-hover:translate-x-1"
+              />
             </Link>
-            <Link
-              className={cn(
-                buttonVariants({ variant: "outline" }),
-                "h-12 rounded-full bg-muted px-6",
-              )}
-              href={copy.sampleHref}
-            >
-              {copy.secondaryLabel}
-            </Link>
-          </div>
-          <div className="mt-11 flex flex-wrap gap-x-7 gap-y-3 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            <span className="flex items-center gap-2">
-              <ScanLine className="size-4 text-primary" />
-              {copy.trackedLabel}
-            </span>
-            <span className="flex items-center gap-2">
-              <Crosshair className="size-4 text-primary" />
-              {copy.alignedLabel}
-            </span>
           </div>
         </section>
 
-        {sport === "baseball" ? <BaseballShowcase compact /> : <HeroShowcase />}
+        <section
+          aria-labelledby="workflow-title"
+          className="grid border-b border-border py-14 lg:grid-cols-[0.8fr_2.2fr] lg:gap-16"
+        >
+          <div>
+            <p className="eyebrow">The training loop</p>
+            <h2
+              className="mt-4 text-4xl font-semibold leading-none tracking-[-0.045em] sm:text-5xl"
+              id="workflow-title"
+            >
+              Film. Compare. Correct.
+            </h2>
+          </div>
+          <ol className="mt-10 grid border-t border-border lg:mt-0 lg:grid-cols-3">
+            {[
+              {
+                icon: Video,
+                number: "01",
+                title: `Capture one ${copy.movement}`,
+                body: "A side view is enough. Record live or upload an existing clip.",
+              },
+              {
+                icon: ScanLine,
+                number: "02",
+                title: "Read the difference",
+                body: "Echo aligns your mechanics to a reference at the moments that matter.",
+              },
+              {
+                icon: ShieldCheck,
+                number: "03",
+                title: "Train one correction",
+                body: "Leave with a focused cue and drill—not a wall of disconnected metrics.",
+              },
+            ].map((step) => (
+              <li
+                className="border-b border-border py-6 lg:border-b-0 lg:border-l lg:px-7 lg:py-0 first:lg:border-l-0"
+                key={step.number}
+              >
+                <div className="flex items-center justify-between">
+                  <step.icon aria-hidden="true" className="size-5 text-primary" />
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {step.number}
+                  </span>
+                </div>
+                <h3 className="mt-8 text-xl font-semibold">{step.title}</h3>
+                <p className="mt-3 max-w-sm leading-7 text-muted-foreground">
+                  {step.body}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </section>
       </div>
     </main>
   );

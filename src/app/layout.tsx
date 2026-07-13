@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Saira, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
-import Link from "next/link";
 import "./globals.css";
+
+import { ProductHeader } from "@/components/product-header";
 
 import { AuthNav } from "./auth/auth-nav";
 
@@ -18,8 +20,20 @@ export const metadata: Metadata = {
     template: "%s · Echo",
   },
   description:
-    "Measure basketball and baseball mechanics, compare your motion with an Echo reference, and get one cited drill to improve.",
+    "One video. One fix. Compare basketball and baseball mechanics with an Echo reference and train the correction that matters next.",
 };
+
+function HeaderFallback() {
+  return (
+    <header className="border-b border-border bg-background">
+      <div className="mx-auto flex min-h-18 w-full max-w-[1536px] items-center px-5 sm:px-8">
+        <span className="font-heading text-2xl font-bold uppercase tracking-[-0.04em]">
+          Echo
+        </span>
+      </div>
+    </header>
+  );
+}
 
 export default function RootLayout({
   children,
@@ -30,40 +44,9 @@ export default function RootLayout({
     <html lang="en" className={`dark h-full antialiased ${saira.variable} ${hanken.variable} ${jetbrains.variable}`}>
       <body className="min-h-full bg-background text-foreground">
         <div className="flex min-h-screen flex-col">
-          <header className="border-b border-border bg-background/80 backdrop-blur-xl">
-            <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 sm:px-8">
-              <Link
-                href="/"
-                className="flex items-center gap-2 font-heading text-lg font-semibold tracking-[-0.02em]"
-              >
-                <span className="grid size-7 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_0_16px_color-mix(in_oklab,var(--primary),transparent_55%)]">
-                  E
-                </span>
-                ECHO
-              </Link>
-              <nav className="flex items-center gap-1 text-sm" aria-label="Primary navigation">
-                <Link
-                  href="/capture"
-                  className="rounded-full px-3 py-2 text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground"
-                >
-                  Analyze
-                </Link>
-                <Link
-                  href="/report"
-                  className="hidden rounded-full px-3 py-2 text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground sm:inline-flex"
-                >
-                  Report
-                </Link>
-                <Link
-                  href="/history"
-                  className="hidden rounded-full px-3 py-2 text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground sm:inline-flex"
-                >
-                  History
-                </Link>
-                <AuthNav />
-              </nav>
-            </div>
-          </header>
+          <Suspense fallback={<HeaderFallback />}>
+            <ProductHeader authSlot={<AuthNav />} />
+          </Suspense>
           {children}
         </div>
       </body>

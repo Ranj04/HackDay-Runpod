@@ -175,7 +175,7 @@ function BaseballResultsClient() {
 
   if (state.phase === "loading") {
     return (
-      <div className="grid min-h-[31rem] place-items-center rounded-[2rem] border border-border bg-card text-muted-foreground">
+      <div className="grid min-h-[31rem] place-items-center border-y border-border text-muted-foreground">
         <p className="flex items-center gap-2 text-sm">
           <LoaderCircle className="size-5 animate-spin" /> Analyzing your pitch…
         </p>
@@ -185,10 +185,10 @@ function BaseballResultsClient() {
 
   if (state.phase === "error") {
     return (
-      <div className="space-y-4 rounded-[2rem] border border-border bg-card p-8 text-muted-foreground">
+      <div className="space-y-4 border-y border-border py-10 text-muted-foreground">
         <p className="text-sm text-destructive">{state.message}</p>
         <Link
-          className="text-sm underline hover:text-foreground"
+          className="text-sm font-medium text-accent-brand-strong underline decoration-accent-brand/40 underline-offset-4 hover:decoration-accent-brand"
           href="/capture?sport=baseball"
         >
           Record or upload another pitch
@@ -199,8 +199,11 @@ function BaseballResultsClient() {
 
   const { analysis, coaching } = state;
   return (
-    <div className="space-y-6">
-      <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-muted-foreground">
+    <div>
+      <p
+        aria-live="polite"
+        className="mb-4 flex items-center gap-2 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-muted-foreground"
+      >
         {state.live ? (
           state.upgrading ? (
             <>
@@ -237,12 +240,6 @@ function BaseballResultsClient() {
         retryLabel="Try another pitch"
         showSaveAction={false}
       />
-      <Link
-        className="inline-block text-sm text-muted-foreground underline hover:text-foreground"
-        href="/capture?sport=baseball"
-      >
-        Record or upload another pitch
-      </Link>
     </div>
   );
 }
@@ -333,7 +330,7 @@ function BasketballResultsClient() {
 
   if (state.phase === "loading") {
     return (
-      <div className="grid min-h-[31rem] place-items-center rounded-[2rem] border border-border bg-card text-muted-foreground">
+      <div className="grid min-h-[31rem] place-items-center border-y border-border text-muted-foreground">
         <p className="flex items-center gap-2 text-sm">
           <LoaderCircle className="size-5 animate-spin" /> Analyzing your shot…
         </p>
@@ -343,10 +340,10 @@ function BasketballResultsClient() {
 
   if (state.phase === "error") {
     return (
-      <div className="space-y-4 rounded-[2rem] border border-border bg-card p-8 text-muted-foreground">
+      <div className="space-y-4 border-y border-border py-10 text-muted-foreground">
         <p className="text-sm text-destructive">{state.message}</p>
         <Link
-          className="text-sm underline hover:text-foreground"
+          className="text-sm font-medium text-accent-brand-strong underline decoration-accent-brand/40 underline-offset-4 hover:decoration-accent-brand"
           href="/capture"
         >
           Record another shot
@@ -356,14 +353,17 @@ function BasketballResultsClient() {
   }
 
   return (
-    <div className="space-y-6">
+    <div>
       {!state.live && (
-        <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-muted-foreground">
+        <p className="mb-4 flex items-center gap-2 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-muted-foreground">
           Sample shot — record your own to see your mechanics.
         </p>
       )}
       {state.live && (
-        <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-muted-foreground">
+        <p
+          aria-live="polite"
+          className="mb-4 flex items-center gap-2 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-muted-foreground"
+        >
           {state.upgrading ? (
             <>
               <LoaderCircle className="size-3 animate-spin" /> Verifying on RunPod GPU…
@@ -379,7 +379,14 @@ function BasketballResultsClient() {
       <ResultsView
         analysis={state.analysis}
         coaching={state.coaching}
-        echoOverlay={<EchoOverlay result={state.analysis} />}
+        echoOverlay={
+          <EchoOverlay
+            className="!w-full [&>div:first-child]:!h-auto [&>div:first-child]:!w-full [&>div:first-child>div:first-child]:!h-auto [&>div:first-child>div:first-child]:!w-full [&_canvas]:!h-auto [&_canvas]:!w-full"
+            height={520}
+            result={state.analysis}
+            width={760}
+          />
+        }
         saveAction={
           <SaveSessionButton
             analysis={state.analysis}
@@ -393,12 +400,6 @@ function BasketballResultsClient() {
           />
         }
       />
-      <Link
-        className="inline-block text-sm text-muted-foreground underline hover:text-foreground"
-        href="/capture"
-      >
-        Record another shot
-      </Link>
     </div>
   );
 }
