@@ -1,11 +1,13 @@
 "use client";
 
-import baseballDelivery from "@/assets/sports/baseball-delivery.webp";
-
 import {
   AthleteFilmRoom,
   type AthletePose,
 } from "./AthleteFilmRoom";
+import {
+  offsetAthletePose,
+  type AthleteMotion,
+} from "./athlete-motion";
 
 const OBSERVED_POSE: AthletePose = {
   head: [892, 179],
@@ -39,6 +41,73 @@ const REFERENCE_POSE: AthletePose = {
   rightAnkle: [1176, 750],
 };
 
+const BASEBALL_LOAD_DELTA = {
+  head: [10, 10],
+  leftShoulder: [20, 15],
+  rightShoulder: [-10, 15],
+  leftElbow: [90, 35],
+  rightElbow: [-40, 35],
+  leftWrist: [150, 20],
+  rightWrist: [-20, 80],
+  leftHip: [20, 22],
+  rightHip: [-10, 18],
+  leftKnee: [70, -80],
+  rightKnee: [-25, -15],
+  leftAnkle: [155, -105],
+  rightAnkle: [-17, -8],
+} as const;
+
+const BASEBALL_RELEASE_DELTA = {
+  head: [-25, 8],
+  leftShoulder: [-30, 15],
+  rightShoulder: [-55, 20],
+  leftElbow: [85, 50],
+  rightElbow: [-145, -20],
+  leftWrist: [150, 40],
+  rightWrist: [-270, 40],
+  leftHip: [-30, 10],
+  rightHip: [-45, 10],
+  leftKnee: [-10, 8],
+  rightKnee: [-55, 25],
+  rightAnkle: [-80, 20],
+} as const;
+
+const BASEBALL_REFERENCE_RELEASE_DELTA = {
+  rightElbow: [-10, -5],
+  rightWrist: [-18, -8],
+  leftHip: [-6, -2],
+} as const;
+
+const BASEBALL_MOTION: AthleteMotion = {
+  id: "baseball-delivery",
+  durationMs: 2200,
+  holdMs: 650,
+  checkpoint: 0.62,
+  keyframes: [
+    {
+      at: 0,
+      observedPose: offsetAthletePose(OBSERVED_POSE, BASEBALL_LOAD_DELTA),
+      referencePose: offsetAthletePose(REFERENCE_POSE, BASEBALL_LOAD_DELTA),
+    },
+    {
+      at: 0.62,
+      observedPose: OBSERVED_POSE,
+      referencePose: REFERENCE_POSE,
+    },
+    {
+      at: 1,
+      observedPose: offsetAthletePose(
+        OBSERVED_POSE,
+        BASEBALL_RELEASE_DELTA,
+      ),
+      referencePose: offsetAthletePose(
+        offsetAthletePose(REFERENCE_POSE, BASEBALL_RELEASE_DELTA),
+        BASEBALL_REFERENCE_RELEASE_DELTA,
+      ),
+    },
+  ],
+};
+
 export function BaseballShowcase({
   compact = false,
   score = 68,
@@ -63,15 +132,14 @@ export function BaseballShowcase({
       compact={compact}
       cue={sequenceCue}
       focusJoint="leftHip"
-      image={baseballDelivery}
       imageDescription="A rendered right-handed pitcher at lead-foot strike with observed and reference pose lines."
+      motion={BASEBALL_MOTION}
       observed={observed}
-      observedPose={OBSERVED_POSE}
       reference={reference}
-      referencePose={REFERENCE_POSE}
       score={score}
       scoreLabel="Form"
       stageLabel="Bullpen 01"
+      sport="baseball"
       timeline={{
         start: "Load",
         checkpoint: "Foot strike",

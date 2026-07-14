@@ -1,23 +1,18 @@
-import type { StaticImageData } from "next/image";
-import Image from "next/image";
-import { Activity } from "lucide-react";
+import { Activity, Pause, Play } from "lucide-react";
 
-export type AthleteJoint =
-  | "head"
-  | "leftShoulder"
-  | "rightShoulder"
-  | "leftElbow"
-  | "rightElbow"
-  | "leftWrist"
-  | "rightWrist"
-  | "leftHip"
-  | "rightHip"
-  | "leftKnee"
-  | "rightKnee"
-  | "leftAnkle"
-  | "rightAnkle";
+import {
+  AnimatedAthleteScene,
+  type AnimatedSport,
+} from "./AnimatedAthleteScene";
+import {
+  interpolateAthleteMotion,
+  type AthleteJoint,
+  type AthleteMotion,
+  type AthletePose,
+  useAthleteMotionPlayback,
+} from "./athlete-motion";
 
-export type AthletePose = Record<AthleteJoint, readonly [number, number]>;
+export type { AthleteJoint, AthletePose } from "./athlete-motion";
 
 const CONNECTIONS: readonly (readonly [AthleteJoint, AthleteJoint])[] = [
   ["leftShoulder", "rightShoulder"],
@@ -34,6 +29,13 @@ const CONNECTIONS: readonly (readonly [AthleteJoint, AthleteJoint])[] = [
   ["rightKnee", "rightAnkle"],
 ];
 
+const SHOOTING_ARM_CONNECTIONS: readonly (
+  readonly [AthleteJoint, AthleteJoint]
+)[] = [
+  ["rightShoulder", "rightElbow"],
+  ["rightElbow", "rightWrist"],
+];
+
 interface TimelineConfig {
   start: string;
   checkpoint: string;
@@ -46,27 +48,38 @@ export interface AthleteFilmRoomProps {
   compact?: boolean;
   cue: string;
   focusJoint: AthleteJoint;
-  image: StaticImageData;
   imageDescription: string;
+  motion: AthleteMotion;
   observed: number;
-  observedPose: AthletePose;
   reference: number;
-  referencePose: AthletePose;
   score: number;
   scoreLabel: string;
   stageLabel: string;
+  sport: AnimatedSport;
   timeline: TimelineConfig;
   viewLabel: string;
 }
 
 function PoseSkeleton({
+  detail = "full",
   pose,
+  quiet = false,
   reference = false,
 }: {
+  detail?: "full" | "shooting-arm";
   pose: AthletePose;
+  quiet?: boolean;
   reference?: boolean;
 }) {
   const color = reference ? "var(--blue)" : "var(--bone)";
+  const connections =
+    detail === "shooting-arm" ? SHOOTING_ARM_CONNECTIONS : CONNECTIONS;
+  const joints: AthleteJoint[] =
+    detail === "shooting-arm"
+      ? ["rightShoulder", "rightElbow", "rightWrist"]
+      : (Object.keys(pose) as AthleteJoint[]).filter(
+          (joint) => joint !== "head",
+        );
   const shoulderCenter = [
     (pose.leftShoulder[0] + pose.rightShoulder[0]) / 2,
     (pose.leftShoulder[1] + pose.rightShoulder[1]) / 2,
@@ -75,21 +88,27 @@ function PoseSkeleton({
   return (
     <g
       fill="none"
-      opacity={reference ? 0.78 : 0.96}
+      opacity={quiet ? (reference ? 0.38 : 0.78) : reference ? 0.78 : 0.96}
       stroke={color}
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={reference ? 3.5 : 4.5}
-      style={{ filter: `drop-shadow(0 0 ${reference ? 6 : 3}px ${color})` }}
+      strokeWidth={quiet ? (reference ? 2.5 : 3) : reference ? 3.5 : 4.5}
+      style={
+        quiet
+          ? undefined
+          : { filter: `drop-shadow(0 0 ${reference ? 6 : 3}px ${color})` }
+      }
       vectorEffect="non-scaling-stroke"
     >
-      <line
-        x1={pose.head[0]}
-        x2={shoulderCenter[0]}
-        y1={pose.head[1] + 28}
-        y2={shoulderCenter[1]}
-      />
-      {CONNECTIONS.map(([start, end]) => (
+      {detail === "full" ? (
+        <line
+          x1={pose.head[0]}
+          x2={shoulderCenter[0]}
+          y1={pose.head[1] + (quiet ? 24 : 28)}
+          y2={shoulderCenter[1]}
+        />
+      ) : null}
+      {connections.map(([start, end]) => (
         <line
           key={`${start}-${end}`}
           x1={pose[start][0]}
@@ -98,19 +117,19 @@ function PoseSkeleton({
           y2={pose[end][1]}
         />
       ))}
-      <circle cx={pose.head[0]} cy={pose.head[1]} r="30" />
-      {(Object.keys(pose) as AthleteJoint[])
-        .filter((joint) => joint !== "head")
-        .map((joint) => (
-          <circle
-            fill={color}
-            key={joint}
-            r={reference ? 5.5 : 6.5}
-            stroke="none"
-            cx={pose[joint][0]}
-            cy={pose[joint][1]}
-          />
-        ))}
+      {detail === "full" ? (
+        <circle cx={pose.head[0]} cy={pose.head[1]} r={quiet ? 24 : 30} />
+      ) : null}
+      {joints.map((joint) => (
+        <circle
+          fill={color}
+          key={joint}
+          r={quiet ? (reference ? 3.5 : 4.5) : reference ? 5.5 : 6.5}
+          stroke="none"
+          cx={pose[joint][0]}
+          cy={pose[joint][1]}
+        />
+      ))}
     </g>
   );
 }
@@ -119,34 +138,50 @@ export function AthletePoseOverlay({
   className = "pointer-events-none absolute inset-0 z-10 h-full w-full",
   focusJoint,
   observedPose,
+  opacity = 1,
+  presentation = "comparison",
   referencePose,
+  focusOpacity = 1,
 }: {
   className?: string;
   focusJoint: AthleteJoint;
   observedPose: AthletePose;
+  opacity?: number;
+  presentation?: "comparison" | "release-scan";
   referencePose: AthletePose;
+  focusOpacity?: number;
 }) {
   const focus = observedPose[focusJoint];
+  const releaseScan = presentation === "release-scan";
 
   return (
     <svg
       aria-hidden="true"
       className={className}
       preserveAspectRatio="xMidYMid slice"
+      style={{ opacity }}
       viewBox="0 0 1672 941"
     >
-      <PoseSkeleton pose={referencePose} reference />
-      <PoseSkeleton pose={observedPose} />
-      <circle
-        cx={focus[0]}
-        cy={focus[1]}
-        fill="none"
-        r="38"
-        stroke="var(--orange)"
-        strokeDasharray="8 8"
-        strokeWidth="3"
-        vectorEffect="non-scaling-stroke"
+      <PoseSkeleton
+        detail={releaseScan ? "shooting-arm" : "full"}
+        pose={referencePose}
+        quiet={releaseScan}
+        reference
       />
+      <PoseSkeleton pose={observedPose} quiet={releaseScan} />
+      {releaseScan ? null : (
+        <circle
+          cx={focus[0]}
+          cy={focus[1]}
+          fill="none"
+          opacity={focusOpacity}
+          r="38"
+          stroke="var(--orange)"
+          strokeDasharray="8 8"
+          strokeWidth="3"
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
     </svg>
   );
 }
@@ -156,23 +191,39 @@ export function AthleteFilmRoom({
   compact = false,
   cue,
   focusJoint,
-  image,
   imageDescription,
+  motion,
   observed,
-  observedPose,
   reference,
-  referencePose,
   score,
   scoreLabel,
   stageLabel,
+  sport,
   timeline,
   viewLabel,
 }: AthleteFilmRoomProps) {
+  const { playing, progress, scrub, toggle } = useAthleteMotionPlayback(motion);
+  const { observedPose, referencePose } = interpolateAthleteMotion(
+    motion,
+    progress,
+  );
+  const releasePose = interpolateAthleteMotion(
+    motion,
+    motion.checkpoint,
+  ).observedPose;
   const checkpoint = Math.max(0, Math.min(100, timeline.checkpointPercent));
-  const sizes = compact
-    ? "(max-width: 640px) calc(100vw - 2.5rem), (max-width: 1536px) calc(100vw - 4rem), 1472px"
-    : "(max-width: 1024px) calc(100vw - 2.5rem), (max-width: 1536px) 65vw, 980px";
-
+  const checkpointProgress = checkpoint / 100;
+  const checkpointDistance = Math.abs(progress - checkpointProgress);
+  const checkpointStrength = Math.max(0, 1 - checkpointDistance / 0.18);
+  const overlayOpacity = 0.68 + checkpointStrength * 0.32;
+  const focusOpacity = checkpointStrength;
+  const phaseLabel =
+    progress < checkpointProgress / 2
+      ? timeline.start
+      : progress < (checkpointProgress + 1) / 2
+        ? timeline.checkpoint
+        : timeline.end;
+  const elapsed = (progress * motion.durationMs) / 1000;
   return (
     <section
       aria-label={ariaLabel}
@@ -180,7 +231,7 @@ export function AthleteFilmRoom({
     >
       <span className="sr-only">
         {imageDescription} Observed separation {observed} degrees, reference {reference}
-        degrees, {scoreLabel.toLowerCase()} {score} out of 100. Coaching cue: {cue}.
+        {" "}degrees, {scoreLabel.toLowerCase()} {score} out of 100. Coaching cue: {cue}.
       </span>
 
       <div
@@ -190,19 +241,19 @@ export function AthleteFilmRoom({
             : "relative min-h-[24rem] overflow-hidden sm:min-h-[31rem]"
         }
       >
-        <Image
-          alt=""
-          className="object-cover"
-          fill
-          placeholder="blur"
-          preload
-          sizes={sizes}
-          src={image}
+        <AnimatedAthleteScene
+          checkpoint={motion.checkpoint}
+          pose={observedPose}
+          progress={progress}
+          releasePose={releasePose}
+          sport={sport}
         />
 
         <AthletePoseOverlay
           focusJoint={focusJoint}
+          focusOpacity={focusOpacity}
           observedPose={observedPose}
+          opacity={overlayOpacity}
           referencePose={referencePose}
         />
 
@@ -238,27 +289,55 @@ export function AthleteFilmRoom({
         </span>
       </div>
 
-      <div className="border-t border-border bg-[var(--ink)] px-5 py-4 sm:px-7">
-        <div className="relative h-12">
-          <div className="absolute inset-x-0 top-2 h-px bg-[var(--muted-ink)]/70" />
-          <div
-            className="absolute left-0 top-2 h-0.5 bg-accent-brand"
-            style={{ width: `${checkpoint}%` }}
-          />
-          <span
-            aria-hidden="true"
-            className="absolute top-2 size-3 -translate-x-1/2 -translate-y-1/2 bg-accent-brand"
-            style={{ left: `${checkpoint}%` }}
-          />
-          <div className="absolute inset-x-0 top-5 font-mono text-[0.58rem] uppercase tracking-[0.07em] text-[var(--muted-ink)] sm:text-[0.65rem] sm:tracking-[0.08em]">
-            <span className="absolute left-0">{timeline.start}</span>
+      <div className="border-t border-border bg-[var(--ink)] px-4 py-4 sm:px-6">
+        <div
+          aria-label={`${ariaLabel} playback controls`}
+          className="flex items-center gap-4 sm:gap-6"
+          role="group"
+        >
+          <button
+            aria-label={`${playing ? "Pause" : "Play"} ${ariaLabel.toLowerCase()} animation`}
+            className="grid size-11 shrink-0 place-items-center rounded-sm border border-[var(--muted-ink)] text-[var(--bone)] transition hover:border-[var(--blue)] hover:text-[var(--blue-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={toggle}
+            type="button"
+          >
+            {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
+          </button>
+          <span className="hidden min-w-20 font-mono text-xs tracking-[0.08em] text-[var(--muted-ink)] sm:block">
+            00:{elapsed.toFixed(2).padStart(5, "0")}
+          </span>
+          <div className="relative h-12 min-w-0 flex-1">
+            <div className="absolute inset-x-0 top-2 h-px bg-[var(--muted-ink)]/70" />
+            <div
+              className="absolute left-0 top-2 h-0.5 bg-accent-brand"
+              style={{ width: `${progress * 100}%` }}
+            />
             <span
-              className="absolute -translate-x-1/2 text-[var(--bone)]"
-              style={{ left: `${checkpoint}%` }}
-            >
-              {timeline.checkpoint}
-            </span>
-            <span className="absolute right-0">{timeline.end}</span>
+              aria-hidden="true"
+              className="absolute top-2 size-3 -translate-x-1/2 -translate-y-1/2 bg-accent-brand"
+              style={{ left: `${progress * 100}%` }}
+            />
+            <input
+              aria-label={`Scrub ${ariaLabel.toLowerCase()} animation`}
+              aria-valuetext={`${phaseLabel}, ${elapsed.toFixed(1)} seconds`}
+              className="echo-scrubber absolute inset-x-0 top-0 h-5 w-full cursor-pointer"
+              max="100"
+              min="0"
+              onChange={(event) => scrub(Number(event.currentTarget.value) / 100)}
+              step="1"
+              type="range"
+              value={progress * 100}
+            />
+            <div className="pointer-events-none absolute inset-x-0 top-5 font-mono text-[0.58rem] uppercase tracking-[0.07em] text-[var(--muted-ink)] sm:text-[0.65rem] sm:tracking-[0.08em]">
+              <span className="absolute left-0">{timeline.start}</span>
+              <span
+                className="absolute -translate-x-1/2 text-[var(--bone)]"
+                style={{ left: `${checkpoint}%` }}
+              >
+                {timeline.checkpoint}
+              </span>
+              <span className="absolute right-0 hidden sm:block">{timeline.end}</span>
+            </div>
           </div>
         </div>
       </div>

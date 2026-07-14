@@ -7,7 +7,6 @@ import { analyzeShot } from "@/lib/analysis";
 import { ShotCaptureSchema, type AnalysisResult } from "@/lib/contracts";
 
 import {
-  BASKETBALL_HERO_SIZES,
   BasketballScene,
   EchoOverlay,
 } from "./EchoOverlay";
@@ -16,14 +15,14 @@ function LoadingFilmRoom({ height }: { height: number }) {
   return (
     <div className="overflow-hidden rounded-md border border-border bg-[var(--ink)]">
       <div className="relative" style={{ height }}>
-        <BasketballScene preload sizes={BASKETBALL_HERO_SIZES} />
+        <BasketballScene />
         <div
           aria-live="polite"
           className="absolute bottom-5 left-5 z-20 flex items-center gap-3 border border-border bg-background/90 px-3 py-2 font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground"
           role="status"
         >
           <span className="size-2 animate-pulse bg-primary" />
-          Aligning sample motion
+          Calibrating release scan
         </div>
       </div>
       <div aria-hidden="true" className="h-20 border-t border-border bg-background" />
@@ -34,7 +33,7 @@ function LoadingFilmRoom({ height }: { height: number }) {
 /** The landing hero runs the real local analysis against the checked-in sample. */
 export function HeroShowcase() {
   const boxRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ width: 1200, height: 470 });
+  const [size, setSize] = useState({ width: 1200, height: 620 });
   const [result, setResult] = useState<AnalysisResult | null>(null);
 
   useEffect(() => {
@@ -56,8 +55,8 @@ export function HeroShowcase() {
       if (width <= 0) return;
       const height = Math.round(
         width >= 900
-          ? Math.max(410, Math.min(510, width * 0.34))
-          : Math.max(310, Math.min(440, width * 0.72)),
+          ? Math.max(500, Math.min(640, width * 0.52))
+          : Math.max(340, Math.min(520, width * 0.72)),
       );
       setSize({ width, height });
     });
@@ -73,8 +72,6 @@ export function HeroShowcase() {
           height={size.height}
           result={result}
           scene
-          scenePreload
-          sceneSizes={BASKETBALL_HERO_SIZES}
           width={size.width}
         />
       ) : (

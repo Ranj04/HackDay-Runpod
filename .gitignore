@@ -58,3 +58,11 @@ next-env.d.ts
 # Python
 __pycache__/
 *.pyc
+
+# local-only tooling, not part of the Flash app (keeps `flash deploy`'s
+# scanner from importing it and failing on missing local deps like cv2)
+scripts/reference-extract/
+.rocketride/
+
+# Local InsForge project credentials
+.insforge/
