@@ -7,9 +7,19 @@ import {
   analyzeBaseballPitch,
   coachBaseballPitch,
 } from "@/lib/analysis/baseball";
-import { ShotCaptureSchema } from "@/lib/contracts";
+import {
+  analyzeFootballThrow,
+  coachFootballThrow,
+} from "@/lib/analysis/football";
+import {
+  ShotCaptureSchema,
+  type AnalysisResult,
+  type CoachingResult,
+  type Flaw,
+  type ShotCapture,
+} from "@/lib/contracts";
 import { poseClipOnGpu } from "@/lib/flash/client";
-import { parseSport } from "@/lib/sports";
+import { parseSport, type SportId } from "@/lib/sports";
 import {
   captureError,
   log,
@@ -24,6 +34,42 @@ export const runtime = "nodejs";
 // silently degrading or forwarding junk to the GPU worker.
 const MAX_CLIP_BYTES = 10_000_000; // 10 MB
 const CLIP_TYPE_PREFIX = "video/";
+
+function assertNeverSport(sport: never): never {
+  throw new Error(`Unsupported sport: ${String(sport)}`);
+}
+
+async function analyzeCaptureForSport(
+  sport: SportId,
+  capture: ShotCapture,
+): Promise<AnalysisResult> {
+  switch (sport) {
+    case "basketball":
+      return analyzeShot(capture);
+    case "baseball":
+      return analyzeBaseballPitch(capture);
+    case "football":
+      return analyzeFootballThrow(capture);
+    default:
+      return assertNeverSport(sport);
+  }
+}
+
+async function coachFlawForSport(
+  sport: SportId,
+  flaw: Flaw,
+): Promise<CoachingResult> {
+  switch (sport) {
+    case "basketball":
+      return coachFlaw(flaw);
+    case "baseball":
+      return coachBaseballPitch(flaw);
+    case "football":
+      return coachFootballThrow(flaw);
+    default:
+      return assertNeverSport(sport);
+  }
+}
 
 export async function POST(request: Request) {
   // Phase 4 (observability): every response carries x-request-id, and every log
@@ -96,18 +142,12 @@ async function handle(request: Request): Promise<Response> {
       warning = "No recorded clip was available for GPU pose";
     }
 
-    const rawAnalysis =
-      sport === "baseball"
-        ? analyzeBaseballPitch(capture)
-        : await analyzeShot(capture);
+    const rawAnalysis = await analyzeCaptureForSport(sport, capture);
     const analysis =
       sport === "basketball"
         ? applyCaptureScorePolicy(rawAnalysis, source)
         : rawAnalysis;
-    const coaching =
-      sport === "baseball"
-        ? coachBaseballPitch(analysis.topFlaw)
-        : await coachFlaw(analysis.topFlaw);
+    const coaching = await coachFlawForSport(sport, analysis.topFlaw);
 
     log("info", "analyze.done", {
       durationMs: Date.now() - startedAt,

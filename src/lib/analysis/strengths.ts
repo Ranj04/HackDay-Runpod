@@ -95,11 +95,41 @@ function baseballStrengths(analysis: AnalysisResult): StrengthReason[] {
   ];
 }
 
+function footballStrengths(analysis: AnalysisResult): StrengthReason[] {
+  const gap = Math.round(
+    Math.abs(analysis.topFlaw.reference - analysis.topFlaw.observed),
+  );
+
+  return [
+    {
+      id: "throw-separation",
+      title: "Strong throwing separation",
+      detail: `Your shoulders finished ${gap}° from the selected reference at lead-foot plant, keeping the throw in a strong sequencing window.`,
+    },
+    {
+      id: "lower-half-sequence",
+      title: "Lower half leads the throw",
+      detail:
+        "Your front foot and hips organize the motion before the chest follows, supporting an efficient transfer into release.",
+    },
+    {
+      id: "throwing-rhythm",
+      title: "Repeatable throwing rhythm",
+      detail:
+        "The lead step and upper-body rotation stay connected instead of forcing the arm to catch up late.",
+    },
+  ];
+}
+
 /** Explain a score above 80 using measured, on-target checkpoints when possible. */
 export function explainStrongScore(
   analysis: AnalysisResult,
 ): StrengthReason[] {
   if (analysis.score <= 80) return [];
+
+  if (analysis.topFlaw.id.startsWith("football_")) {
+    return footballStrengths(analysis);
+  }
 
   if (analysis.topFlaw.metric === "hipShoulderSeparation") {
     return baseballStrengths(analysis);

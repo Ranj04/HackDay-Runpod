@@ -1,92 +1,82 @@
 "use client";
-// Landing hero: the real form-vs-echo loop on sample data — not a decorative
-// placeholder. Auto-plays inside the tilted product card.
+
 import { useEffect, useRef, useState } from "react";
+
 import sample from "../../../fixtures/sample-shot.json";
 import { analyzeShot } from "@/lib/analysis";
-import { EchoOverlay } from "./EchoOverlay";
 import { ShotCaptureSchema, type AnalysisResult } from "@/lib/contracts";
 
-function HeroScanPulse() {
+import {
+  BasketballScene,
+  EchoOverlay,
+} from "./EchoOverlay";
+
+function LoadingFilmRoom({ height }: { height: number }) {
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[var(--ink)]">
-      <div className="capture-grid absolute inset-0 opacity-25" />
-      <div
-        className="pointer-events-none absolute inset-x-0 h-px bg-[var(--blue)] opacity-70"
-        style={{ animation: "hero-scan 2.4s ease-in-out infinite" }}
-      />
-      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[var(--ink)] to-transparent" />
+    <div className="overflow-hidden rounded-md border border-border bg-[var(--ink)]">
+      <div className="relative" style={{ height }}>
+        <BasketballScene />
+        <div
+          aria-live="polite"
+          className="absolute bottom-5 left-5 z-20 flex items-center gap-3 border border-border bg-background/90 px-3 py-2 font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground"
+          role="status"
+        >
+          <span className="size-2 animate-pulse bg-primary" />
+          Calibrating release scan
+        </div>
+      </div>
+      <div aria-hidden="true" className="h-20 border-t border-border bg-background" />
     </div>
   );
 }
 
+/** The landing hero runs the real local analysis against the checked-in sample. */
 export function HeroShowcase() {
   const boxRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ w: 380, h: 475 });
+  const [size, setSize] = useState({ width: 1200, height: 620 });
   const [result, setResult] = useState<AnalysisResult | null>(null);
 
   useEffect(() => {
-    analyzeShot(ShotCaptureSchema.parse(sample)).then(setResult);
+    let active = true;
+    analyzeShot(ShotCaptureSchema.parse(sample)).then((analysis) => {
+      if (active) setResult(analysis);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
-    const el = boxRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect;
-      if (width > 0 && height > 0) {
-        setSize({ w: Math.floor(width), h: Math.floor(height) });
-      }
+    const element = boxRef.current;
+    if (!element) return;
+
+    const resize = new ResizeObserver(([entry]) => {
+      const width = Math.floor(entry.contentRect.width);
+      if (width <= 0) return;
+      const height = Math.round(
+        width >= 900
+          ? Math.max(500, Math.min(640, width * 0.52))
+          : Math.max(340, Math.min(520, width * 0.72)),
+      );
+      setSize({ width, height });
     });
-    ro.observe(el);
-    return () => ro.disconnect();
+    resize.observe(element);
+    return () => resize.disconnect();
   }, []);
 
   return (
-    <section className="relative mx-auto w-full max-w-lg">
-      <div className="absolute -inset-8 -z-10 rounded-full bg-[var(--blue)]/20 blur-3xl" />
-      <div className="rotate-2 rounded-[2.2rem] border border-border bg-card p-3 shadow-2xl shadow-black/20">
-        <div
-          ref={boxRef}
-          className="relative aspect-[4/5] overflow-hidden rounded-[1.65rem] bg-[var(--ink)]"
-        >
-          {!result ? (
-            <HeroScanPulse />
-          ) : (
-            <EchoOverlay
-              compact
-              result={result}
-              width={size.w}
-              height={size.h}
-              className="absolute inset-0 h-full w-full"
-            />
-          )}
-
-          <div className="pointer-events-none absolute left-5 top-5 flex items-center gap-2 rounded-full border border-white/10 bg-black/50 px-3 py-1.5 text-xs text-white/80">
-            <span className="size-2 animate-pulse rounded-full bg-[var(--orange)]" />
-            Shot 01 · side view
-          </div>
-
-          <div className="pointer-events-none absolute inset-x-5 bottom-5 rounded-xl border border-white/10 bg-black/55 p-4 text-white">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <span className="text-xs text-white/50">Form score</span>
-                <strong className="data mt-1 block text-4xl font-semibold tabular-nums">
-                  {result ? result.score : "—"}
-                </strong>
-              </div>
-              {result && (
-                <span
-                  className="rounded-full px-3 py-1 text-xs font-medium"
-                  style={{ background: "var(--accent-brand)", color: "var(--accent-brand-foreground)" }}
-                >
-                  {result.topFlaw.label}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+    <section aria-label="Interactive form comparison" className="w-full" ref={boxRef}>
+      {result ? (
+        <EchoOverlay
+          className="w-full"
+          height={size.height}
+          result={result}
+          scene
+          width={size.width}
+        />
+      ) : (
+        <LoadingFilmRoom height={size.height} />
+      )}
     </section>
   );
 }

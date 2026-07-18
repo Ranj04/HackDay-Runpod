@@ -91,12 +91,12 @@
 
   /* 1. Brand primitives — theme-independent (dark canvas chrome + utilities read these) */
   --ink: #080c14;
-  --line: #1e2a3d;
+  --line: #21384f;
   --bone: #f4f1e8;
   --blue: #2e86ff;
   --blue-soft: #5aa0ff;
   --orange: var(--orange-500);
-  --muted-ink: #8a94a8;
+  --muted-ink: #9db1c5;
 
   /* 2. Primitive palette scales */
   --blue-900: #0b1b2b;
@@ -173,19 +173,19 @@
 
 .dark {
   /* 3. shadcn semantic tokens — DARK */
-  --background: var(--blue-900);
-  --foreground: #eaf1f8;
-  --card: #102536;
-  --card-foreground: #eaf1f8;
-  --popover: #102536;
-  --popover-foreground: #eaf1f8;
+  --background: #080c14;
+  --foreground: var(--bone);
+  --card: #0b1320;
+  --card-foreground: var(--bone);
+  --popover: #0b1320;
+  --popover-foreground: var(--bone);
   --primary: var(--blue);
   --primary-foreground: #04080f;
-  --secondary: #16263a;
-  --secondary-foreground: #eaf1f8;
-  --muted: #14283d;
+  --secondary: #0d1928;
+  --secondary-foreground: var(--bone);
+  --muted: #0d1928;
   --muted-foreground: #9db1c5;
-  --accent: #16324f;
+  --accent: #10233a;
   --accent-foreground: var(--blue-100);
   /* Lighter in dark so it stays AA as inline status TEXT on dark surfaces/tints
      (shadcn uses --destructive as a text color); the solid red #d7263d is the
@@ -199,8 +199,8 @@
   --chart-3: var(--orange-500);
   --chart-4: #7c879b;
   --chart-5: #1e6fe0;
-  --sidebar: #102536;
-  --sidebar-foreground: #eaf1f8;
+  --sidebar: #0b1320;
+  --sidebar-foreground: var(--bone);
   --sidebar-primary: var(--blue);
   --sidebar-primary-foreground: #04080f;
   --sidebar-accent: #16324f;
@@ -237,12 +237,24 @@
   }
   body {
     @apply bg-background text-foreground;
+    min-width: 320px;
+    text-rendering: optimizeLegibility;
   }
   html {
     @apply font-sans;
+    scroll-padding-top: 6rem;
   }
   h1, h2, h3, .font-heading {
     font-family: var(--font-heading);
+  }
+  button,
+  summary,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--blue), transparent 55%);
+    color: var(--bone);
   }
 }
 
@@ -257,18 +269,41 @@
   }
 }
 
-.hero-glow {
-  background:
-    radial-gradient(circle at 72% 38%, rgb(46 134 255 / 24%), transparent 27rem),
-    radial-gradient(circle at 18% 80%, rgb(249 115 22 / 10%), transparent 22rem),
-    linear-gradient(160deg, #080c14 30%, #0b1422);
-}
-
 .capture-grid {
   background-image:
     linear-gradient(rgb(46 134 255 / 8%) 1px, transparent 1px),
     linear-gradient(90deg, rgb(46 134 255 / 8%) 1px, transparent 1px);
   background-size: 38px 38px;
+}
+
+.echo-scrubber {
+  appearance: none;
+  background: transparent;
+}
+
+.echo-scrubber::-webkit-slider-runnable-track {
+  height: 1.25rem;
+  background: transparent;
+}
+
+.echo-scrubber::-webkit-slider-thumb {
+  appearance: none;
+  width: 0.9rem;
+  height: 1.25rem;
+  background: transparent;
+}
+
+.echo-scrubber::-moz-range-track {
+  height: 1.25rem;
+  background: transparent;
+  border: 0;
+}
+
+.echo-scrubber::-moz-range-thumb {
+  width: 0.9rem;
+  height: 1.25rem;
+  background: transparent;
+  border: 0;
 }
 
 .score-ring {

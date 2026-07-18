@@ -125,11 +125,12 @@ export function SaveSessionButton({
   }
 
   return (
-    <div className="flex flex-col items-end gap-2">
+    <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
       <Button
-        className="h-11 px-5 font-medium"
+        className="h-11 border-border bg-transparent px-5 font-medium text-foreground hover:bg-muted"
         disabled={pending}
         onClick={handleSave}
+        variant="outline"
       >
         {pending ? (
           <LoaderCircle className="animate-spin" />
@@ -143,7 +144,7 @@ export function SaveSessionButton({
             : "Save & view progress"}
         <ChevronRight className="size-4" />
       </Button>
-      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <span className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground sm:justify-end">
         {mode === "supabase" ? (
           <Cloud className="size-3" />
         ) : (
@@ -154,7 +155,7 @@ export function SaveSessionButton({
             ? "Added locally — sign in to sync future uploads"
             : "Automatically added to your progress"
           : mode === "supabase"
-            ? "Uploads save securely to your account"
+            ? "Signed in: account sync · signed out: this browser"
             : "Uploads save to local demo storage"}
       </span>
       {error && (

@@ -3,12 +3,23 @@
 // and a basketball in the shooting hand through release — auto-playing a smooth,
 // frame-interpolated loop so it reads as a person actually shooting.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pause, Play } from "lucide-react";
+import { Pause, Play, ScanLine } from "lucide-react";
+
 import { detectShootingSide } from "@/lib/analysis";
 import { alignToReference } from "@/lib/analysis/align";
 import { GOOD_FORM_FRAMES } from "@/lib/analysis/reference";
 import { isVisible } from "@/lib/vision/visibility";
 import type { AnalysisResult, PoseFrame, ShotCapture } from "@/lib/contracts";
+import {
+  AthletePoseOverlay,
+  type AthleteJoint,
+  type AthletePose,
+} from "./AthleteFilmRoom";
+import { AnimatedAthleteScene } from "./AnimatedAthleteScene";
+import {
+  interpolateAthleteMotion,
+  type AthleteMotion,
+} from "./athlete-motion";
 import {
   drawBackdrop,
   drawBall,
@@ -26,8 +37,160 @@ export interface EchoOverlayProps {
   width?: number;
   height?: number;
   className?: string;
-  /** Canvas only — no chrome or playback controls (e.g. landing hero). */
+  /** Canvas only, with a compact play/pause control (e.g. embedded previews). */
   compact?: boolean;
+  /** Render the basketball film-room scene beneath the live canvas. */
+  scene?: boolean;
+  /** Lock the static 3D scene to its calibrated release pose. */
+  releaseScan?: boolean;
+}
+
+const HOLD_MS = 650;
+
+const BASKETBALL_OBSERVED_POSE: AthletePose = {
+  head: [986, 254],
+  leftShoulder: [930, 326],
+  rightShoulder: [980, 335],
+  leftElbow: [862, 283],
+  rightElbow: [925, 270],
+  leftWrist: [830, 185],
+  rightWrist: [884, 190],
+  leftHip: [905, 505],
+  rightHip: [955, 503],
+  leftKnee: [882, 612],
+  rightKnee: [934, 615],
+  leftAnkle: [875, 732],
+  rightAnkle: [945, 731],
+};
+
+const BASKETBALL_REFERENCE_POSE: AthletePose = {
+  head: [994, 259],
+  leftShoulder: [938, 320],
+  rightShoulder: [987, 329],
+  leftElbow: [869, 269],
+  rightElbow: [933, 258],
+  leftWrist: [821, 158],
+  rightWrist: [891, 174],
+  leftHip: [913, 500],
+  rightHip: [965, 497],
+  leftKnee: [889, 607],
+  rightKnee: [941, 608],
+  leftAnkle: [881, 729],
+  rightAnkle: [951, 727],
+};
+
+const BASKETBALL_FIXTURE_JOINTS: Record<AthleteJoint, string> = {
+  head: "nose",
+  leftShoulder: "left_shoulder",
+  rightShoulder: "right_shoulder",
+  leftElbow: "left_elbow",
+  rightElbow: "right_elbow",
+  leftWrist: "left_wrist",
+  rightWrist: "right_wrist",
+  leftHip: "left_hip",
+  rightHip: "right_hip",
+  leftKnee: "left_knee",
+  rightKnee: "right_knee",
+  leftAnkle: "left_ankle",
+  rightAnkle: "right_ankle",
+};
+
+const BASKETBALL_RELEASE_FIXTURE_INDEX = 18;
+const BASKETBALL_FIXTURE_SCALE = 700;
+
+function poseFromBasketballFixture(
+  frameIndex: number,
+  releasePose: AthletePose,
+): AthletePose {
+  const frame = GOOD_FORM_FRAMES[frameIndex];
+  const release = GOOD_FORM_FRAMES[BASKETBALL_RELEASE_FIXTURE_INDEX];
+  if (!frame || !release) return releasePose;
+
+  return Object.fromEntries(
+    (Object.keys(BASKETBALL_FIXTURE_JOINTS) as AthleteJoint[]).map((joint) => {
+      const fixtureName = BASKETBALL_FIXTURE_JOINTS[joint];
+      const point = frame.keypoints.find((keypoint) => keypoint.name === fixtureName);
+      const releasePoint = release.keypoints.find(
+        (keypoint) => keypoint.name === fixtureName,
+      );
+      const anchor = releasePose[joint];
+      if (!point || !releasePoint) return [joint, anchor];
+      return [
+        joint,
+        [
+          anchor[0] + (point.x - releasePoint.x) * BASKETBALL_FIXTURE_SCALE,
+          anchor[1] + (point.y - releasePoint.y) * BASKETBALL_FIXTURE_SCALE,
+        ] as const,
+      ];
+    }),
+  ) as AthletePose;
+}
+
+const BASKETBALL_FIXTURE_KEYFRAMES = [
+  [0, 0],
+  [4, 0.151],
+  [7, 0.264],
+  [11, 0.416],
+  [15, 0.567],
+  [18, 0.68],
+  [22, 0.796],
+  [29, 1],
+] as const;
+
+const BASKETBALL_MOTION: AthleteMotion = {
+  id: "basketball-shot",
+  durationMs: 2100,
+  holdMs: HOLD_MS,
+  checkpoint: 0.68,
+  keyframes: BASKETBALL_FIXTURE_KEYFRAMES.map(([frameIndex, at]) => ({
+    at,
+    observedPose: poseFromBasketballFixture(
+      frameIndex,
+      BASKETBALL_OBSERVED_POSE,
+    ),
+    referencePose: poseFromBasketballFixture(
+      frameIndex,
+      BASKETBALL_REFERENCE_POSE,
+    ),
+  })),
+};
+
+function remapMotionProgress(
+  progress: number,
+  sourceCheckpoint: number,
+  targetCheckpoint: number,
+) {
+  if (progress <= sourceCheckpoint) {
+    return sourceCheckpoint > 0
+      ? (progress / sourceCheckpoint) * targetCheckpoint
+      : targetCheckpoint;
+  }
+
+  return sourceCheckpoint < 1
+    ? targetCheckpoint +
+        ((progress - sourceCheckpoint) / (1 - sourceCheckpoint)) *
+          (1 - targetCheckpoint)
+    : targetCheckpoint;
+}
+
+export function BasketballScene({
+  pose = BASKETBALL_OBSERVED_POSE,
+  progress = BASKETBALL_MOTION.checkpoint,
+  releasePose = BASKETBALL_OBSERVED_POSE,
+}: {
+  pose?: AthletePose;
+  progress?: number;
+  releasePose?: AthletePose;
+}) {
+  return (
+    <AnimatedAthleteScene
+      checkpoint={BASKETBALL_MOTION.checkpoint}
+      pose={pose}
+      progress={progress}
+      releasePose={releasePose}
+      sport="basketball"
+    />
+  );
 }
 
 // Draw the echo from the clean hand-authored exemplar. The active SCORING
@@ -43,7 +206,6 @@ const GOOD_FORM_CAPTURE: ShotCapture = {
 };
 
 const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
-const HOLD_MS = 650; // pause on the follow-through before looping
 const SPEED = 0.85;
 
 /** Linear-interpolate two pose frames (by landmark name) for smooth motion. */
@@ -60,7 +222,15 @@ function lerpFrame(a: PoseFrame, b: PoseFrame, t: number): PoseFrame {
   };
 }
 
-export function EchoOverlay({ result, width = 440, height = 560, className, compact = false }: EchoOverlayProps) {
+export function EchoOverlay({
+  result,
+  width = 440,
+  height = 560,
+  className,
+  compact = false,
+  scene = true,
+  releaseScan = false,
+}: EchoOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const frames = result.capture.frames;
   const total = frames.length;
@@ -100,28 +270,50 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
     return Math.min(total - 1, apexIdx + Math.round(0.15 * fps));
   }, [frames, total, releaseIndex, fps, shootWrist]);
 
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(() => !releaseScan);
   const [index, setIndex] = useState(0);
-  const playingRef = useRef(playing);
+  const [seekVersion, setSeekVersion] = useState(0);
   const posRef = useRef(0); // float frame position
-  useEffect(() => {
-    playingRef.current = playing;
-  }, [playing]);
 
-  // posRef survives effect re-runs — reset on a new capture. The rAF loop syncs
-  // `index` from posRef, so no setState here (avoids cascading-render lint).
+  // Reduced motion starts at the release checkpoint without autoplay. A user
+  // can still explicitly press Play; the preference only changes the default.
   useEffect(() => {
-    posRef.current = 0;
-  }, [result.capture.id, total]);
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let scheduledFrame = 0;
 
-  // Place the echo to the RIGHT of the player as a clean side-by-side "you vs
-  // ideal" instead of superimposed (which tangles the two figures) — everywhere,
-  // including the compact landing hero, so Shot 01's echo matches the results.
-  const sideBySide = echoFrames.length > 0;
+    const applyPreference = (reduced: boolean) => {
+      cancelAnimationFrame(scheduledFrame);
+      scheduledFrame = requestAnimationFrame(() => {
+        const nextIndex = reduced || releaseScan ? releaseIndex : 0;
+        posRef.current = nextIndex;
+        setIndex(nextIndex);
+        setPlaying(!reduced && !releaseScan);
+        setSeekVersion((version) => version + 1);
+      });
+    };
+    const handleChange = (event: MediaQueryListEvent) => {
+      applyPreference(event.matches);
+    };
+
+    applyPreference(preference.matches);
+    preference.addEventListener("change", handleChange);
+    return () => {
+      cancelAnimationFrame(scheduledFrame);
+      preference.removeEventListener("change", handleChange);
+    };
+  }, [releaseIndex, releaseScan, result.capture.id, total]);
+
+  // On the plain analysis stage, separate the two figures for clarity. Over the
+  // rendered athlete, align both tracks directly to the body like a form scan.
+  const sideBySide = !scene && echoFrames.length > 0;
 
   // Stable fit transform (centers + scales) from all visible poses, accounting
   // for the echo's horizontal shift so both figures fit and stay centered.
   const fit = useMemo(() => {
+    if (scene) {
+      return { s: 1, cx: width / 2, cy: height / 2, echoShift: 0 };
+    }
+
     const bbox = (arr: PoseFrame[]) => {
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       for (const f of arr) {
@@ -137,6 +329,7 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
     };
     const u = bbox(frames);
     if (!Number.isFinite(u.minX)) return { s: 1, cx: width / 2, cy: height / 2, echoShift: 0 };
+
     const e = echoFrames.length ? bbox(echoFrames) : null;
     const hasEcho = e !== null && Number.isFinite(e.minX);
     const GAP = 0.1; // normalized gap between the two figures
@@ -153,7 +346,14 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
     const floor = sideBySide ? 0.5 : 0.9; // let two figures shrink to fit
     const s = Math.max(floor, Math.min(2.8, Math.min((width * widthFactor) / bwPx, (height * 0.82) / bhPx)));
     return { s, cx: ((minX + maxX) / 2) * width, cy: ((minY + maxY) / 2) * height, echoShift };
-  }, [frames, echoFrames, width, height, sideBySide]);
+  }, [
+    frames,
+    echoFrames,
+    width,
+    height,
+    scene,
+    sideBySide,
+  ]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -171,7 +371,7 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
     if (!ctx) return;
     if (total === 0) {
       ctx.clearRect(0, 0, width, height);
-      drawBackdrop(ctx, width, height);
+      if (!scene) drawBackdrop(ctx, width, height);
       drawVignette(ctx, width, height);
       return;
     }
@@ -204,6 +404,10 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
 
     const draw = (pos: number, now: number) => {
       ctx.clearRect(0, 0, width, height);
+      if (scene) {
+        drawVignette(ctx, width, height);
+        return;
+      }
       drawBackdrop(ctx, width, height);
       const intro = reduced ? 1 : easeOutCubic(Math.min(1, (now - start) / 600));
       const user = frameAt(frames, pos);
@@ -224,9 +428,11 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
         ctx.restore();
       }
       drawPlayer(ctx, user, width, height, flawKeys);
-      const ballR = Math.max(7, torsoLengthPx(user, width, height) * 0.17);
-      const ball = ballAt(pos, user);
-      if (ball) drawBall(ctx, ball.x * width, ball.y * height, ballR);
+      if (!scene) {
+        const ballR = Math.max(7, torsoLengthPx(user, width, height) * 0.17);
+        const ball = ballAt(pos, user);
+        if (ball) drawBall(ctx, ball.x * width, ball.y * height, ballR);
+      }
       if (flawJoint && pos >= releaseIndex - 1) {
         const pulse = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(now / 420);
         drawFlawMarker(ctx, user, width, height, flawJoint, pulse);
@@ -239,19 +445,21 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
       raf = requestAnimationFrame(tick);
       const dt = Math.min(100, now - last);
       last = now;
+      if (document.hidden) return;
       if (total > 0 && posRef.current > playEnd) {
         posRef.current = playEnd;
       }
-      if (playingRef.current) {
-        if (posRef.current >= playEnd) {
-          holding += dt;
-          if (holding >= HOLD_MS) {
-            posRef.current = 0;
-            holding = 0;
-          }
-        } else {
-          posRef.current = Math.min(playEnd, posRef.current + (dt / 1000) * fps * SPEED);
+      if (posRef.current >= playEnd) {
+        holding += dt;
+        if (holding >= HOLD_MS) {
+          posRef.current = 0;
+          holding = 0;
         }
+      } else {
+        posRef.current = Math.min(
+          playEnd,
+          posRef.current + (dt / 1000) * fps * SPEED,
+        );
       }
       const idx = Math.round(posRef.current);
       if (idx !== lastIdx) {
@@ -260,76 +468,223 @@ export function EchoOverlay({ result, width = 440, height = 560, className, comp
       }
       draw(posRef.current, now);
     };
-    // Reduced motion: no animation loop — render a single legible frame once
-    // (the release pose, where the flaw reads most clearly).
-    if (reduced) {
+    if (!playing) {
       raf = requestAnimationFrame((now) => {
-        setIndex(releaseIndex);
-        draw(releaseIndex, now);
+        draw(posRef.current, now);
       });
       return () => cancelAnimationFrame(raf);
     }
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [result, frames, echoFrames, total, fps, releaseIndex, playEnd, flawKeys, flawJoint, shootWrist, fit, width, height]);
+  }, [result, frames, echoFrames, total, fps, releaseIndex, playEnd, flawKeys, flawJoint, shootWrist, fit, width, height, scene, playing, seekVersion]);
 
   const releasePct = playEnd > 0 ? (Math.min(releaseIndex, playEnd) / playEnd) * 100 : 0;
   const posPct = playEnd > 0 ? (Math.min(index, playEnd) / playEnd) * 100 : 0;
+  const captureProgress = posPct / 100;
+  const captureReleaseProgress = releasePct / 100;
+  const motionProgress = releaseScan
+    ? BASKETBALL_MOTION.checkpoint
+    : remapMotionProgress(
+        captureProgress,
+        captureReleaseProgress,
+        BASKETBALL_MOTION.checkpoint,
+      );
+  const { observedPose, referencePose } = interpolateAthleteMotion(
+    BASKETBALL_MOTION,
+    motionProgress,
+  );
+  const checkpointDistance = Math.abs(
+    motionProgress - BASKETBALL_MOTION.checkpoint,
+  );
+  const checkpointStrength = releaseScan
+    ? 1
+    : Math.max(0, 1 - checkpointDistance / 0.18);
+  const phaseLabel =
+    motionProgress < 0.22
+      ? "Dip"
+      : motionProgress < 0.56
+        ? "Set"
+        : motionProgress < 0.84
+          ? "Release"
+          : "Follow-through";
+  const elapsed = `${(index / fps).toFixed(2).padStart(5, "0")}`;
+
+  const scrub = (value: number) => {
+    const next = (Math.max(0, Math.min(100, value)) / 100) * playEnd;
+    posRef.current = next;
+    setIndex(Math.round(next));
+    setPlaying(false);
+    setSeekVersion((version) => version + 1);
+  };
 
   return (
     <div className={className} style={compact ? undefined : { width }}>
       <div
-        className={compact ? "relative h-full w-full overflow-hidden" : "relative overflow-hidden rounded-xl"}
+        className={
+          compact
+            ? "relative h-full w-full overflow-hidden"
+            : "overflow-hidden rounded-md border border-border bg-[var(--ink)]"
+        }
         style={
           compact
             ? undefined
-            : { width, height, border: "1px solid var(--line)" }
+            : { width }
         }
       >
-        <canvas
-          ref={canvasRef}
-          className="block"
-          style={compact ? { width: "100%", height: "100%" } : undefined}
-        />
-        {!compact && (
-          <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between p-3">
-            <span className="rounded-full px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em]" style={{ background: "rgba(255,255,255,0.05)", color: "var(--muted-ink)" }}>
-              Form vs echo
-            </span>
-            {Math.abs(index - releaseIndex) <= 1 && (
-              <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ background: "var(--blue)", color: "#04080f" }}>
-                Release
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {!compact && (
-      <div className="mt-4 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setPlaying((p) => !p)}
-          className="grid size-9 shrink-0 place-items-center rounded-full text-[#04080f] transition hover:brightness-110"
-          style={{ background: "var(--blue)" }}
-          aria-label={playing ? "Pause" : "Play"}
+        <div
+          className={compact ? "relative h-full w-full" : "relative"}
+          style={compact ? undefined : { width, height }}
         >
-          {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
-        </button>
-        <div className="relative h-1 flex-1 rounded-full" style={{ background: "var(--line)" }}>
-          <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${posPct}%`, background: "var(--blue)" }} />
-          <div className="absolute top-1/2 h-2.5 w-px -translate-y-1/2" style={{ left: `${releasePct}%`, background: "var(--blue-soft)" }} title="Release" />
+          {scene ? (
+            <BasketballScene
+              pose={observedPose}
+              progress={motionProgress}
+              releasePose={BASKETBALL_OBSERVED_POSE}
+            />
+          ) : null}
+          <canvas
+            ref={canvasRef}
+            className="relative z-10 block"
+            style={compact ? { width: "100%", height: "100%" } : undefined}
+          />
+          {scene ? (
+            <AthletePoseOverlay
+              focusJoint="rightElbow"
+              focusOpacity={checkpointStrength}
+              observedPose={observedPose}
+              opacity={releaseScan ? 1 : 0.68 + checkpointStrength * 0.32}
+              presentation={releaseScan ? "release-scan" : "comparison"}
+              referencePose={referencePose}
+            />
+          ) : null}
+          {compact && !releaseScan ? (
+            <button
+              aria-label={
+                playing
+                  ? "Pause basketball shooting animation"
+                  : "Play basketball shooting animation"
+              }
+              className="absolute bottom-4 left-4 z-30 grid size-11 place-items-center rounded-sm border border-[var(--muted-ink)] bg-black/70 text-[var(--bone)] backdrop-blur-[2px] transition hover:border-[var(--blue)] hover:text-[var(--blue-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => setPlaying((current) => !current)}
+              type="button"
+            >
+              {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
+            </button>
+          ) : null}
+          {!compact && (
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-4 p-4 sm:p-6">
+              <div className="border-l-2 border-accent-brand pl-3 font-mono text-[0.65rem] uppercase tracking-[0.14em] text-foreground">
+                <span className="block text-muted-foreground">Film room 01</span>
+                Side view
+              </div>
+              <div className="grid gap-2 bg-black/30 px-3 py-2 font-mono text-[0.62rem] uppercase tracking-[0.12em] sm:px-4">
+                {releaseScan ? (
+                  <>
+                    <span className="flex items-center gap-3 text-foreground">
+                      <span className="h-px w-8 bg-foreground" /> Tracked pose
+                    </span>
+                    <span className="flex items-center gap-3 text-primary">
+                      <span className="h-px w-8 bg-primary" /> Reference arm
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex items-center gap-3 text-foreground">
+                      <span className="h-px w-8 bg-foreground" /> You
+                    </span>
+                    <span className="flex items-center gap-3 text-primary">
+                      <span className="h-px w-8 bg-primary" /> Reference
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+          {!compact && (releaseScan || Math.abs(index - releaseIndex) <= 1) && (
+            <span className="pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 border border-accent-brand bg-background/90 px-2 py-1 font-mono text-[0.6rem] uppercase tracking-[0.12em] text-accent-brand sm:bottom-6">
+              {releaseScan ? "Release pose calibrated" : "Release checkpoint"}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-3 text-[11px]" style={{ color: "var(--muted-ink)" }}>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full" style={{ background: "var(--bone)" }} /> You
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full" style={{ background: "var(--blue)" }} /> Ideal
-          </span>
-        </div>
+
+        {!compact && releaseScan ? (
+          <div
+            aria-label="Calibrated basketball release scan"
+            className="border-t border-border bg-background px-4 py-4 sm:px-6"
+          >
+            <div className="flex min-h-12 items-center gap-4">
+              <span className="grid size-12 shrink-0 place-items-center rounded-sm border border-primary/60 text-primary">
+                <ScanLine aria-hidden="true" className="size-5" />
+              </span>
+              <div className="min-w-0">
+                <span className="block font-mono text-[0.62rem] uppercase tracking-[0.14em] text-primary">
+                  Release scan
+                </span>
+                <span className="block truncate text-sm text-muted-foreground">
+                  Pose locked to the rendered athlete
+                </span>
+              </div>
+              <span className="ml-auto hidden shrink-0 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-muted-foreground sm:block">
+                12 joints tracked
+              </span>
+            </div>
+          </div>
+        ) : null}
+
+        {!compact && !releaseScan ? (
+          <div className="border-t border-border bg-background px-4 py-4 sm:px-6">
+            <div className="flex items-center gap-4 sm:gap-6">
+              <button
+                aria-label={
+                  playing
+                    ? "Pause basketball shooting animation"
+                    : "Play basketball shooting animation"
+                }
+                className="grid size-12 shrink-0 place-items-center rounded-sm border border-muted-foreground text-foreground transition hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => setPlaying((current) => !current)}
+                type="button"
+              >
+                {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
+              </button>
+              <span className="hidden min-w-20 font-mono text-xs tracking-[0.1em] text-muted-foreground sm:block">
+                00:{elapsed}
+              </span>
+              <div className="relative h-12 min-w-0 flex-1">
+                <div className="absolute inset-x-0 top-2 h-px bg-muted-foreground/70" />
+                <div
+                  className="absolute left-0 top-2 h-0.5 bg-accent-brand"
+                  style={{ width: `${posPct}%` }}
+                />
+                <span
+                  aria-hidden="true"
+                  className="absolute top-2 size-3 -translate-x-1/2 -translate-y-1/2 bg-accent-brand"
+                  style={{ left: `${posPct}%` }}
+                />
+                <input
+                  aria-label="Scrub basketball shooting animation"
+                  aria-valuetext={`${phaseLabel}, ${Number(elapsed).toFixed(1)} seconds`}
+                  className="echo-scrubber absolute inset-x-0 top-0 h-5 w-full cursor-pointer"
+                  max="100"
+                  min="0"
+                  onChange={(event) => scrub(Number(event.currentTarget.value))}
+                  type="range"
+                  value={posPct}
+                />
+                <div className="pointer-events-none absolute inset-x-0 top-5 font-mono text-[0.58rem] uppercase tracking-[0.08em] text-muted-foreground sm:text-[0.65rem]">
+                  <span className="absolute left-0">Dip</span>
+                  <span
+                    className="absolute -translate-x-1/2 text-foreground"
+                    style={{ left: `${releasePct}%` }}
+                  >
+                    Release
+                  </span>
+                  <span className="absolute right-0 hidden sm:block">Follow-through</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
-      )}
     </div>
   );
 }

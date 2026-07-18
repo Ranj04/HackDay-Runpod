@@ -2,10 +2,18 @@
 // Webcam view with a live MediaPipe pose skeleton drawn on an overlay canvas.
 // Recording buffers PoseFrames; stopping assembles a contract-valid ShotCapture
 // and hands it back via onCapture.
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { PoseLandmarker, type NormalizedLandmark } from "@mediapipe/tasks-vision";
+import { Camera, ScanLine, Square, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { BONE, ECHO, MUTED, SIGNAL } from "@/components/overlay/palette";
+import { BONE } from "@/components/overlay/palette";
 import { useCamera } from "@/lib/vision/useCamera";
 import { createPoseLandmarker } from "@/lib/vision/poseLandmarker";
 import { landmarksToKeypoints } from "@/lib/vision/landmarks";
@@ -13,7 +21,8 @@ import { buildCapture } from "@/lib/vision/buildCapture";
 import { isVisible, isVisibleForFraming } from "@/lib/vision/visibility";
 import { detectRelease, detectShootingSide } from "@/lib/analysis/detectRelease";
 import type { PoseFrame, ShotCapture } from "@/lib/contracts";
-import type { SportId } from "@/lib/sports";
+import { SPORTS, type SportId } from "@/lib/sports";
+import { cn } from "@/lib/utils";
 
 export interface CaptureViewProps {
   onCapture?: (capture: ShotCapture, clip?: Blob) => void;
@@ -23,6 +32,8 @@ export interface CaptureViewProps {
   /** Decimal places for normalized coords (default 4); `null` keeps full precision. */
   precision?: number | null;
   sport?: SportId;
+  sourceControl?: ReactNode;
+  onUseSample?: () => void;
 }
 
 const POSE_CONNECTIONS = PoseLandmarker.POSE_CONNECTIONS as { start: number; end: number }[];
@@ -43,6 +54,33 @@ const ARM_RISE = 0.12; // wrist must rise this far (normalized) to count as a re
 const DESCEND_MARGIN = 0.1; // drop this far below the apex => follow-through ending
 const FOLLOW_DWELL_MS = 350; // hold past the apex before calling the shot done
 const FOLLOW_THROUGH_MS = 600; // keep this much after release when trimming the tail
+
+const CAPTURE_COPY: Record<
+  SportId,
+  { action: string; description: string; framing: string; setup: string }
+> = {
+  basketball: {
+    action: "shoot",
+    description:
+      "Record a side-view shot. Echo tracks your mechanics from dip through release.",
+    framing: "Include your hips, knees and shooting arm",
+    setup: "About an arm's length from the screen",
+  },
+  baseball: {
+    action: "pitch",
+    description:
+      "Record a side-view pitch. Echo tracks your delivery from leg lift through release.",
+    framing: "Include your hips, glove and stride",
+    setup: "Step back until your full delivery stays visible",
+  },
+  football: {
+    action: "throw",
+    description:
+      "Record a throwing-side quarterback pass. Echo tracks your sequence from set through foot plant and release.",
+    framing: "Include both feet and hold your finish until recording stops",
+    setup: "Step back until your shoulders, hips, arm and both feet are visible",
+  },
+};
 
 /**
  * Trim buffered frames so the capture ends on the follow-through, dropping any
@@ -98,7 +136,10 @@ const LM = {
 /** Side-on framing gate — tuned for laptop demos (closer than "ten feet back").
  *  Torso: both hips + at least one shoulder. Arm: one full chain. Leg: hip→knee;
  *  ankle optional when the knee is low (feet often clip before MediaPipe sees them). */
-function isCapturable(landmarks: NormalizedLandmark[]): boolean {
+function isCapturable(
+  landmarks: NormalizedLandmark[],
+  sport: SportId,
+): boolean {
   const v = (i: number) => Boolean(landmarks[i] && isVisibleForFraming(landmarks[i]));
 
   const torso = v(LM.lHip) && v(LM.rHip) && (v(LM.lShoulder) || v(LM.rShoulder));
@@ -115,6 +156,17 @@ function isCapturable(landmarks: NormalizedLandmark[]): boolean {
   const leg =
     legOk(LM.lHip, LM.lKnee, LM.lAnkle) || legOk(LM.rHip, LM.rKnee, LM.rAnkle);
 
+  if (sport === "football") {
+    const completePlant =
+      v(LM.lShoulder) &&
+      v(LM.rShoulder) &&
+      v(LM.lHip) &&
+      v(LM.rHip) &&
+      v(LM.lAnkle) &&
+      v(LM.rAnkle);
+    return completePlant && arm;
+  }
+
   return torso && arm && leg;
 }
 
@@ -124,7 +176,10 @@ export function CaptureView({
   targetFps,
   precision,
   sport = "basketball",
+  sourceControl,
+  onUseSample,
 }: CaptureViewProps) {
+  const titleId = useId();
   const { videoRef, stream, error, start, stop } = useCamera();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const landmarkerRef = useRef<PoseLandmarker | null>(null);
@@ -203,7 +258,7 @@ export function CaptureView({
         const result = lm.detectForVideo(video, nowMs);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const landmarks = result.landmarks?.[0] as NormalizedLandmark[] | undefined;
-        const cap = landmarks ? isCapturable(landmarks) : false;
+        const cap = landmarks ? isCapturable(landmarks, sport) : false;
         if (cap !== capturableRef.current) {
           capturableRef.current = cap;
           setCapturable(cap);
@@ -222,25 +277,39 @@ export function CaptureView({
               keypoints: landmarksToKeypoints(landmarks),
             });
 
-            // Track the highest wrist to detect when the shot is finished.
-            const lw = landmarks[LM.lWrist];
-            const rw = landmarks[LM.rWrist];
-            const ly = lw && isVisible(lw) ? lw.y : Infinity;
-            const ry = rw && isVisible(rw) ? rw.y : Infinity;
-            const wristY = Math.min(ly, ry); // smaller y = higher hand
-            if (Number.isFinite(wristY)) {
-              if (!Number.isFinite(shotBaseYRef.current)) shotBaseYRef.current = wristY;
-              if (wristY < apexYRef.current) {
-                apexYRef.current = wristY;
-                apexTRef.current = tRec;
-              }
-              if (!shotArmedRef.current && shotBaseYRef.current - apexYRef.current >= ARM_RISE) {
-                shotArmedRef.current = true; // a genuine upward shot motion happened
-              }
-              const descended = wristY - apexYRef.current >= DESCEND_MARGIN;
-              const dwelled = tRec - apexTRef.current >= FOLLOW_DWELL_MS;
-              if (shotArmedRef.current && tRec >= MIN_RECORD_MS && descended && dwelled) {
-                finishRecordingRef.current(); // shot done — stop and analyze now
+            // Basketball has a reliable vertical wrist apex. Pitching and
+            // quarterback throws move mainly across the frame, so they keep
+            // the complete five-second window instead of stopping early.
+            if (sport === "basketball") {
+              const lw = landmarks[LM.lWrist];
+              const rw = landmarks[LM.rWrist];
+              const ly = lw && isVisible(lw) ? lw.y : Infinity;
+              const ry = rw && isVisible(rw) ? rw.y : Infinity;
+              const wristY = Math.min(ly, ry); // smaller y = higher hand
+              if (Number.isFinite(wristY)) {
+                if (!Number.isFinite(shotBaseYRef.current)) {
+                  shotBaseYRef.current = wristY;
+                }
+                if (wristY < apexYRef.current) {
+                  apexYRef.current = wristY;
+                  apexTRef.current = tRec;
+                }
+                if (
+                  !shotArmedRef.current &&
+                  shotBaseYRef.current - apexYRef.current >= ARM_RISE
+                ) {
+                  shotArmedRef.current = true;
+                }
+                const descended = wristY - apexYRef.current >= DESCEND_MARGIN;
+                const dwelled = tRec - apexTRef.current >= FOLLOW_DWELL_MS;
+                if (
+                  shotArmedRef.current &&
+                  tRec >= MIN_RECORD_MS &&
+                  descended &&
+                  dwelled
+                ) {
+                  finishRecordingRef.current();
+                }
               }
             }
           }
@@ -249,7 +318,7 @@ export function CaptureView({
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [ready, videoRef]);
+  }, [ready, sport, videoRef]);
 
   // Keep the latest onCapture/build options without retriggering the recording
   // effect (finishRecording must stay referentially stable).
@@ -371,81 +440,181 @@ export function CaptureView({
 
   const recording = phase === "recording";
   const recordDisabled = !ready || (!recording && !capturable);
+  const movement = SPORTS[sport].movement;
+  const copy = CAPTURE_COPY[sport];
+  const cameraStatus = recording
+    ? "Recording"
+    : phase === "countdown"
+      ? "Starting"
+      : ready && capturable
+        ? "Ready"
+        : ready
+          ? "Frame check"
+          : "Camera setup";
 
   return (
-    <div className={className}>
-      <div className="relative w-full overflow-hidden rounded-lg bg-black">
+    <section
+      aria-labelledby={titleId}
+      className={cn(
+        "grid min-h-[34rem] overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:grid-cols-[minmax(0,1fr)_21rem]",
+        className,
+      )}
+    >
+      <div className="relative min-h-[22rem] overflow-hidden bg-black sm:min-h-[30rem] lg:min-h-[42rem]">
         {/* Mirror both layers so the selfie view and skeleton stay aligned. */}
-        <video ref={videoRef} className="w-full -scale-x-100" playsInline muted />
-        <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 h-full w-full -scale-x-100" />
+        <video
+          aria-label={`${SPORTS[sport].label} camera preview`}
+          ref={videoRef}
+          className="absolute inset-0 h-full w-full -scale-x-100 object-contain"
+          playsInline
+          muted
+        />
+        <canvas
+          aria-hidden="true"
+          ref={canvasRef}
+          className="pointer-events-none absolute inset-0 h-full w-full -scale-x-100"
+        />
 
         {recording && (
-          <span className="absolute left-3 top-3 flex items-center gap-2 rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white">
-            <span className="h-2 w-2 animate-pulse rounded-full" style={{ background: SIGNAL }} /> REC
+          <span className="absolute left-4 top-4 flex items-center gap-2 rounded-md border border-white/15 bg-black/75 px-3 py-2 font-mono text-xs font-medium tracking-[0.16em] text-white">
+            <span className="size-2 animate-pulse rounded-full bg-destructive" />
+            REC
           </span>
         )}
 
-        {ready && !recording && (
-          <span
-            className="absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/70 px-3 py-1 text-xs font-medium"
-            style={{ color: capturable ? ECHO : MUTED }}
-          >
-            <span className="h-2 w-2 rounded-full" style={{ background: capturable ? ECHO : MUTED }} />
-            {capturable ? "Ready" : "Not ready"}
-          </span>
-        )}
-
-        {ready && !capturable && !recording && phase === "idle" && (
-          <div className="pointer-events-none absolute inset-0 flex items-end justify-center p-6 pb-8">
-            <p className="max-w-sm rounded-lg bg-black/80 px-4 py-3 text-center text-sm font-medium text-white">
-              Stand side-on, about an arm&apos;s length from the screen. Get your
-              hips and knees in frame — feet can sit near the bottom edge.
-              Recording starts on its own once you&apos;re set.
-            </p>
-          </div>
-        )}
+        <span
+          aria-hidden="true"
+          className="absolute left-4 top-4 size-5 border-l-2 border-t-2 border-white/75"
+        />
+        <span
+          aria-hidden="true"
+          className="absolute right-4 top-4 size-5 border-r-2 border-t-2 border-white/75"
+        />
+        <span
+          aria-hidden="true"
+          className="absolute bottom-4 left-4 size-5 border-b-2 border-l-2 border-white/75"
+        />
+        <span
+          aria-hidden="true"
+          className="absolute bottom-4 right-4 size-5 border-b-2 border-r-2 border-white/75"
+        />
 
         {phase === "countdown" && (
-          <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/30">
+          <div
+            aria-atomic="true"
+            aria-live="assertive"
+            className="pointer-events-none absolute inset-0 grid place-items-center bg-black/30"
+            role="status"
+          >
             <div className="text-center">
-              <span className="block text-9xl font-bold leading-none text-white drop-shadow-[0_0_24px_rgba(0,0,0,0.7)]">
+              <span className="block font-heading text-8xl font-semibold leading-none text-white drop-shadow-[0_0_24px_rgba(0,0,0,0.7)] sm:text-9xl">
                 {count}
               </span>
               <span className="mt-2 block text-sm font-medium text-white/80">
-                Get ready to {sport === "baseball" ? "pitch" : "shoot"}…
+                Get ready to {copy.action}…
               </span>
             </div>
           </div>
         )}
       </div>
 
-      {(error || initError) && (
-        <p className="mt-2 text-sm" style={{ color: SIGNAL }}>
-          {error ?? initError}
-        </p>
-      )}
-      <div className="mt-3 flex items-center gap-3">
-        <Button onClick={handleButton} disabled={recordDisabled} variant={recording ? "destructive" : "default"}>
-          {recording
-            ? "Stop and analyze"
-            : phase === "countdown"
-              ? "Starting…"
-              : "Record now"}
-        </Button>
-        {!ready && !initError && (
-          <span className="text-sm text-muted-foreground">Starting camera…</span>
+      <aside className="flex min-w-0 flex-col border-t border-border p-5 sm:p-6 lg:border-l lg:border-t-0">
+        {sourceControl}
+
+        <div className="mt-7">
+          <p
+            aria-live="polite"
+            className={cn(
+              "font-mono text-xs font-semibold uppercase tracking-[0.16em]",
+              ready && capturable ? "text-success" : "text-muted-foreground",
+            )}
+          >
+            {cameraStatus}
+          </p>
+          <h1
+            className="mt-3 text-4xl font-semibold uppercase leading-[0.92] tracking-[-0.045em] sm:text-5xl lg:text-4xl"
+            id={titleId}
+          >
+            Show us your {movement}.
+          </h1>
+          <p className="mt-4 text-sm leading-6 text-muted-foreground">
+            {copy.description}
+          </p>
+        </div>
+
+        <div className="mt-6 border-y border-border">
+          <div className="flex items-center gap-3 py-4">
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-border bg-muted text-foreground">
+              <UserRound className="size-4" />
+            </span>
+            <div>
+              <p className="text-sm font-medium">Get side-on</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {copy.setup}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 border-t border-border py-4">
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-border bg-muted text-foreground">
+              <ScanLine className="size-4" />
+            </span>
+            <div>
+              <p className="text-sm font-medium">Keep your full motion in frame</p>
+              <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+                {copy.framing}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {(error || initError) && (
+          <p className="mt-4 text-sm text-destructive" role="alert">
+            {error ?? initError}
+          </p>
         )}
-        {ready && phase === "idle" && capturable && (
-          <span className="text-sm text-muted-foreground">
-            Good frame — auto-starting…
-          </span>
-        )}
-        {ready && phase === "idle" && !capturable && (
-          <span className="text-sm text-muted-foreground">
-            Get fully in frame and it records automatically
-          </span>
-        )}
-      </div>
-    </div>
+
+        <div className="mt-auto flex flex-col gap-2 pt-6">
+          <Button
+            className="h-12 w-full rounded-lg bg-accent-brand px-5 text-accent-brand-foreground hover:bg-accent-brand/90"
+            disabled={recordDisabled}
+            onClick={handleButton}
+            size="lg"
+          >
+            {recording ? (
+              <Square data-icon="inline-start" />
+            ) : (
+              <Camera data-icon="inline-start" />
+            )}
+            {recording
+              ? "Stop and analyze"
+              : phase === "countdown"
+                ? "Starting…"
+                : "Start recording"}
+          </Button>
+
+          {!ready && !initError ? (
+            <p className="text-center text-xs text-muted-foreground">
+              Starting camera…
+            </p>
+          ) : null}
+          {ready && phase === "idle" && capturable ? (
+            <p className="text-center text-xs text-muted-foreground">
+              Good frame — recording starts automatically
+            </p>
+          ) : null}
+          {ready && phase === "idle" && !capturable ? (
+            <p className="text-center text-xs text-muted-foreground">
+              Step fully into frame to begin
+            </p>
+          ) : null}
+
+          {onUseSample ? (
+            <Button className="h-11 w-full" onClick={onUseSample} variant="link">
+              Use sample {movement}
+            </Button>
+          ) : null}
+        </div>
+      </aside>
+    </section>
   );
 }

@@ -21,58 +21,60 @@ type State =
   | { phase: "error"; message: string }
   | { phase: "ready"; report: CoachedReport; persisted: boolean; live: boolean };
 
+async function loadReport(): Promise<State> {
+  // Each source is best-effort: a failure in one never blocks the report — we
+  // always fall through to a guaranteed sample render, so /report can't crash.
+
+  // 1. A persisted report (Supabase), if the user is signed in.
+  try {
+    const saved = isSupabaseConfigured() ? await loadLatestReportAction() : null;
+    if (saved?.reps?.length) {
+      return { phase: "ready", report: saved, persisted: true, live: false };
+    }
+  } catch {
+    // ignore — fall through
+  }
+
+  // 2. A live fan-out from A's Flash pipeline, if configured.
+  try {
+    const fanout = await fetchFanoutReportAction();
+    if (fanout?.reps?.length) {
+      const report = await buildReport(fanout, { liveCoaching: true });
+      return { phase: "ready", report, persisted: false, live: true };
+    }
+  } catch {
+    // ignore — fall through
+  }
+
+  // 3. Sample fallback — must always render.
+  try {
+    const report = await buildReport(sampleReport);
+    return { phase: "ready", report, persisted: false, live: false };
+  } catch {
+    // Last resort: render the raw contract (ranked reps without cited drills).
+    return {
+      phase: "ready",
+      report: sampleReport as CoachedReport,
+      persisted: false,
+      live: false,
+    };
+  }
+}
+
 export function ReportClient() {
   const [state, setState] = useState<State>({ phase: "loading" });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string>();
   const mode = getPersistenceMode();
 
-  async function load() {
-    setState({ phase: "loading" });
-
-    // Each source is best-effort: a failure in one never blocks the report — we
-    // always fall through to a guaranteed sample render, so /report can't crash.
-
-    // 1. A persisted report (Supabase), if the user is signed in.
-    try {
-      const saved = isSupabaseConfigured() ? await loadLatestReportAction() : null;
-      if (saved?.reps?.length) {
-        setState({ phase: "ready", report: saved, persisted: true, live: false });
-        return;
-      }
-    } catch {
-      // ignore — fall through
-    }
-
-    // 2. A live fan-out from A's Flash pipeline, if configured.
-    try {
-      const fanout = await fetchFanoutReportAction();
-      if (fanout?.reps?.length) {
-        const report = await buildReport(fanout, { liveCoaching: true });
-        setState({ phase: "ready", report, persisted: false, live: true });
-        return;
-      }
-    } catch {
-      // ignore — fall through
-    }
-
-    // 3. Sample fallback — must always render.
-    try {
-      const report = await buildReport(sampleReport);
-      setState({ phase: "ready", report, persisted: false, live: false });
-    } catch {
-      // Last resort: render the raw contract (ranked reps without cited drills).
-      setState({
-        phase: "ready",
-        report: sampleReport as CoachedReport,
-        persisted: false,
-        live: false,
-      });
-    }
-  }
-
   useEffect(() => {
-    load();
+    let active = true;
+    void loadReport().then((nextState) => {
+      if (active) setState(nextState);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function handleSave() {
@@ -81,7 +83,8 @@ export function ReportClient() {
     setSaveError(undefined);
     try {
       await saveReportAction(state.report);
-      await load(); // reload from Supabase — now served from persistence
+      setState({ phase: "loading" });
+      setState(await loadReport()); // reload from account-backed persistence
     } catch (caught) {
       if (caught instanceof Error && caught.message === "AUTH_REQUIRED") {
         window.location.href = "/auth?next=/report";

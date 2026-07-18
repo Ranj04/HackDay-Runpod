@@ -1,14 +1,13 @@
 import { CalendarDays, Cloud, HardDrive, Repeat2, TrendingUp } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import type { EchoSession, PersistenceMode } from "@/lib/db";
+
+const sessionDateFormatter = new Intl.DateTimeFormat("en", {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
 
 export function ProgressView({
   sessions,
@@ -40,15 +39,17 @@ export function ProgressView({
       : 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+    <div>
+      <header className="flex flex-col justify-between gap-5 pb-10 sm:flex-row sm:items-end">
         <div>
-          <p className="eyebrow">Progress history</p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
-            Your form, over time.
+          <h1 className="text-5xl font-semibold tracking-[-0.055em] sm:text-6xl">
+            Progress
           </h1>
+          <p className="mt-3 text-lg text-muted-foreground">
+            Your form, over time.
+          </p>
         </div>
-        <Badge className="h-7 gap-1.5 bg-muted text-foreground ring-1 ring-border">
+        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
           {mode === "supabase" ? (
             <Cloud className="size-3.5 text-primary" />
           ) : (
@@ -61,19 +62,24 @@ export function ProgressView({
               : "Saved on this device"}
           <span aria-hidden="true">·</span>
           {sessions.length} sessions
-        </Badge>
-      </div>
+        </div>
+      </header>
 
-      <section className="grid gap-4 sm:grid-cols-3">
+      <section
+        aria-label="Progress summary"
+        className="grid border-y border-border sm:grid-cols-3"
+      >
         <Stat
           icon={<CalendarDays />}
           label="Sessions"
           value={String(sessions.length)}
+          className="border-b border-border sm:border-b-0 sm:border-r"
         />
         <Stat
           icon={<TrendingUp />}
           label="Score change"
           value={`${scoreDelta >= 0 ? "+" : ""}${scoreDelta}`}
+          className="border-b border-border sm:border-b-0 sm:border-r"
         />
         <Stat
           icon={<Repeat2 />}
@@ -83,47 +89,69 @@ export function ProgressView({
         />
       </section>
 
-      <Card className="border-0 ring-white/10">
-        <CardHeader>
-          <CardTitle className="text-xl">Score over time</CardTitle>
-          <CardDescription>
+      <section
+        aria-labelledby="score-history-heading"
+        className="border-b border-border py-10 sm:py-12"
+      >
+        <div className="mb-8 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+          <h2
+            id="score-history-heading"
+            className="text-2xl font-semibold tracking-[-0.025em]"
+          >
+            Score over time
+          </h2>
+          <p className="text-sm text-muted-foreground">
             Each point is one completed shot analysis.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ScoreChart sessions={sessions} />
-        </CardContent>
-      </Card>
+          </p>
+        </div>
+        <ScoreChart sessions={sessions} />
+      </section>
 
-      <Card className="border-0 ring-white/10">
-        <CardHeader>
-          <CardTitle className="text-xl">Recent sessions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
+      <section
+        aria-labelledby="recent-sessions-heading"
+        className="py-10 sm:py-12"
+      >
+        <div className="mb-5 flex items-end justify-between gap-4">
+          <h2
+            id="recent-sessions-heading"
+            className="text-2xl font-semibold tracking-[-0.025em]"
+          >
+            Recent sessions
+          </h2>
+          <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+            {sessions.length} total
+          </span>
+        </div>
+        <div className="border-b border-border">
           {sessions.map((session) => (
             <article
-              className="grid items-center gap-3 rounded-xl border bg-muted p-4 sm:grid-cols-[auto_1fr_auto]"
+              className="grid items-center gap-4 border-t border-border py-5 sm:grid-cols-[5rem_1fr_auto] sm:gap-6"
               key={session.id}
             >
-              <strong className="text-3xl tabular-nums">{session.score}</strong>
               <div>
-                <h2 className="font-medium">{session.top_flaw_label}</h2>
-                <p className="text-xs text-muted-foreground">
+                <strong className="data block text-3xl font-semibold text-primary">
+                  {session.score}
+                </strong>
+                <span className="text-[0.65rem] uppercase tracking-[0.16em] text-muted-foreground">
+                  Score
+                </span>
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-medium">{session.top_flaw_label}</h3>
+                <p className="mt-1 truncate text-xs text-muted-foreground">
                   {session.coaching.drill.title}
                 </p>
               </div>
-              <time className="text-xs text-muted-foreground">
-                {new Intl.DateTimeFormat("en", {
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                }).format(new Date(session.created_at))}
+              <time
+                className="col-start-2 text-xs text-muted-foreground sm:col-start-auto sm:text-right"
+                dateTime={session.created_at}
+              >
+                {sessionDateFormatter.format(new Date(session.created_at))}
               </time>
             </article>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </div>
   );
 }
@@ -132,29 +160,31 @@ function Stat({
   label,
   value,
   detail,
+  className,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   detail?: string;
+  className?: string;
 }) {
   return (
-    <Card className="border-0 ring-white/10">
-      <CardContent className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary [&>svg]:size-4">
-          {icon}
+    <div
+      className={`flex min-h-32 items-start gap-4 px-1 py-6 sm:px-5 ${className ?? ""}`}
+    >
+      <span className="mt-1 shrink-0 text-primary [&>svg]:size-4">{icon}</span>
+      <div className="min-w-0">
+        <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+          {label}
         </span>
-        <div className="min-w-0">
-          <span className="text-xs text-muted-foreground">{label}</span>
-          <strong className="block text-2xl font-semibold">{value}</strong>
-          {detail && (
-            <span className="block truncate text-xs text-muted-foreground">
-              {detail}
-            </span>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        <strong className="data mt-2 block text-3xl font-semibold">{value}</strong>
+        {detail ? (
+          <span className="mt-1 block truncate text-xs text-muted-foreground">
+            {detail}
+          </span>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -169,7 +199,7 @@ function ScoreChart({ sessions }: { sessions: EchoSession[] }) {
   const points = chartPoints.map(({ x, y }) => `${x},${y}`).join(" ");
 
   return (
-    <div className="overflow-x-auto rounded-xl bg-muted p-3 sm:p-5">
+    <div className="overflow-x-auto border-l border-border py-2 pl-2 sm:pl-5">
       <svg
         aria-label="Score over time chart"
         className="h-auto w-full"
@@ -194,12 +224,19 @@ function ScoreChart({ sessions }: { sessions: EchoSession[] }) {
           stroke="var(--chart-1)"
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeWidth="5"
+          strokeWidth="4"
         />
         {chartPoints.map(({ session, x, y }) => {
           return (
             <g key={session.id}>
-              <circle cx={x} cy={y} fill="var(--muted)" r="7" stroke="var(--chart-1)" strokeWidth="4" />
+              <circle
+                cx={x}
+                cy={y}
+                fill="var(--background)"
+                r="6"
+                stroke="var(--chart-1)"
+                strokeWidth="4"
+              />
               <text
                 fill="var(--foreground)"
                 fontSize="12"

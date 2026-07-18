@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
   ArrowUpRight,
   Check,
@@ -9,15 +9,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { explainStrongScore } from "@/lib/analysis/strengths";
 import type { AnalysisResult, CoachingResult } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
@@ -38,7 +30,7 @@ export interface ResultsViewProps {
 const severityLabel = {
   low: "Small adjustment",
   med: "Focus area",
-  high: "Priority fix",
+  high: "High impact",
 } as const;
 
 export function ResultsView({
@@ -57,181 +49,180 @@ export function ResultsView({
   const strengths = explainStrongScore(analysis);
 
   return (
-    <div className="space-y-6">
-      <section className="grid items-start gap-6 lg:grid-cols-[0.72fr_1.28fr]">
-        <Card className="border-0 bg-card text-card-foreground ring-foreground/10">
-          <CardHeader>
-            <CardDescription className="text-muted-foreground">
-              {scoreLabel}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center pb-7">
-            <div
-              className="score-ring grid size-48 place-items-center rounded-full"
-              style={
-                {
-                  "--score": `${analysis.score * 3.6}deg`,
-                } as CSSProperties
-              }
-            >
-              <div className="grid size-39 place-items-center rounded-full bg-card text-center">
-                <div>
-                  <strong className="block text-6xl font-semibold tracking-[-0.06em]">
-                    {analysis.score}
-                  </strong>
-                  <span className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                    out of 100
-                  </span>
+    <section aria-label={`${scoreLabel} analysis`} className="space-y-5">
+      <div className="grid border-y border-border lg:grid-cols-[minmax(0,1.65fr)_minmax(19rem,0.72fr)]">
+        <div className="min-w-0 py-4 sm:py-6 lg:pr-7">
+          <div className="relative grid min-h-80 place-items-center overflow-hidden rounded-md bg-background [&>*]:!w-full [&>*]:!rounded-md">
+            {echoOverlay ?? (
+              <div className="relative grid min-h-[32rem] w-full place-items-center border border-border">
+                <div className="capture-grid absolute inset-0 opacity-25" />
+                <div className="relative flex items-center gap-5">
+                  <div className="h-28 w-px rotate-12 bg-foreground/20 shadow-[14px_20px_0_color-mix(in_oklab,var(--foreground),transparent_80%),-10px_52px_0_color-mix(in_oklab,var(--foreground),transparent_80%)]" />
+                  <div className="h-28 w-px -rotate-6 bg-primary shadow-[10px_18px_0_var(--primary),-8px_52px_0_var(--primary)]" />
                 </div>
+                <span className="absolute bottom-4 left-4 text-xs font-medium text-muted-foreground">
+                  Motion comparison
+                </span>
               </div>
-            </div>
-            <div className="mt-6 flex items-center gap-2 text-sm text-link">
-              <Sparkles className="size-4" />
-              {scoreBlurb}
-            </div>
-            <div className="mt-7 grid w-full grid-cols-2 gap-3">
-              <Metric label={metricLabels[0]} value={`${topFlaw.observed}°`} />
-              <Metric label={metricLabels[1]} value={`${topFlaw.reference}°`} accent />
-            </div>
-          </CardContent>
-        </Card>
+            )}
+          </div>
+        </div>
 
-        <Card className="border-0 ring-white/10">
-          <CardHeader>
-            <div className="flex items-center justify-between gap-3">
-              <Badge
-                variant="secondary"
-                className="border border-accent-brand/30 bg-accent-brand/15 text-accent-brand-strong"
-              >
-                <CircleAlert className="size-3" />
-                {severityLabel[topFlaw.severity]}
-              </Badge>
-              <span className="text-xs tabular-nums text-muted-foreground">
-                {Math.round(Math.abs(topFlaw.reference - topFlaw.observed))}°
-                from reference
+        <aside className="flex min-w-0 flex-col border-t border-border py-6 lg:border-l lg:border-t-0 lg:py-6 lg:pl-7">
+          <div>
+            <div className="flex items-center justify-between gap-4">
+              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-accent-brand-strong">
+                <CircleAlert className="size-4" />
+                Priority fix
+              </p>
+              <span className="data text-xs text-muted-foreground">
+                {severityLabel[topFlaw.severity]} ·{" "}
+                {Math.round(Math.abs(topFlaw.reference - topFlaw.observed))}° off
               </span>
             </div>
-            <CardTitle className="mt-5 text-3xl font-semibold tracking-[-0.04em]">
+            <h2 className="mt-3 text-3xl font-semibold uppercase leading-[0.98] tracking-[-0.035em] text-foreground sm:text-4xl">
               {topFlaw.label}
-            </CardTitle>
-            <CardDescription className="max-w-xl text-base leading-7">
+            </h2>
+            <p className="mt-4 text-sm leading-6 text-muted-foreground">
               {coaching.summary}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mt-2 overflow-hidden rounded-2xl border bg-muted">
-              {echoOverlay ?? (
-                <div className="relative grid min-h-52 place-items-center">
-                  <div className="capture-grid absolute inset-0 opacity-25" />
-                  <div className="relative flex items-center gap-5">
-                    <div className="h-28 w-px rotate-12 bg-foreground/20 shadow-[14px_20px_0_color-mix(in_oklab,var(--foreground),transparent_80%),-10px_52px_0_color-mix(in_oklab,var(--foreground),transparent_80%)]" />
-                    <div className="h-28 w-px -rotate-6 bg-[var(--blue)] shadow-[10px_18px_0_var(--blue),-8px_52px_0_var(--blue)]" />
-                  </div>
-                  <span className="absolute bottom-4 left-4 text-xs font-medium text-muted-foreground">
-                    Echo overlay slot
-                  </span>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </section>
+            </p>
+          </div>
 
-      {strengths.length > 0 ? (
-        <Card className="border-success/25 bg-success/5 ring-success/15">
-          <CardHeader>
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-success">
-              <Check className="size-4" />
-              Why this score is strong
-            </div>
-            <CardTitle className="mt-2 text-2xl font-semibold">
-              What you&apos;re doing well
-            </CardTitle>
-            <CardDescription className="max-w-2xl text-base leading-7">
-              These mechanics are helping the movement stay efficient and
-              repeatable.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="grid gap-3 lg:grid-cols-3">
-              {strengths.map((strength) => (
-                <li
-                  className="flex gap-3 rounded-xl border border-success/15 bg-background/40 p-4"
-                  key={strength.id}
-                >
-                  <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-success/15 text-success">
-                    <Check className="size-3.5" />
+          <dl className="mt-6 border-y border-border">
+            <div className="flex items-end justify-between gap-4 py-4">
+              <div>
+                <dt className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  {scoreLabel}
+                </dt>
+                <dd className="data mt-1 text-4xl font-semibold tracking-[-0.05em] text-foreground">
+                  {analysis.score}
+                  <span className="ml-1 text-base font-normal text-muted-foreground">
+                    / 100
                   </span>
-                  <div>
-                    <p className="text-sm font-semibold">{strength.title}</p>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      {strength.detail}
-                    </p>
-                  </div>
+                </dd>
+              </div>
+              <p className="flex max-w-40 items-center justify-end gap-1.5 text-right text-xs leading-5 text-muted-foreground">
+                <Sparkles className="size-3.5 shrink-0 text-link" />
+                {scoreBlurb}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 divide-x divide-border border-t border-border">
+              <Metric label={metricLabels[0]} value={`${topFlaw.observed}°`} />
+              <Metric
+                accent
+                label={metricLabels[1]}
+                value={`${topFlaw.reference}°`}
+              />
+            </div>
+          </dl>
+
+          <section className="mt-6">
+            <p className="flex items-center gap-2 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-accent-brand-strong">
+              <RotateCcw className="size-3.5" />
+              Corrective drill
+            </p>
+            <h3 className="mt-2 text-xl font-semibold uppercase leading-tight tracking-[-0.02em]">
+              {coaching.drill.title}
+            </h3>
+            <ol className="mt-3 space-y-2 border-l border-border pl-4">
+              {coaching.drill.steps.map((step, index) => (
+                <li className="flex gap-2 text-xs leading-5 text-muted-foreground" key={step}>
+                  <span className="data text-accent-brand-strong">{index + 1}.</span>
+                  <span>{step}</span>
                 </li>
               ))}
-            </ul>
-          </CardContent>
-        </Card>
-      ) : null}
+            </ol>
+          </section>
 
-      <Card className="border-0 ring-white/10">
-        <CardHeader>
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            <RotateCcw className="size-4 text-primary" />
-            Corrective drill
+          <div className="mt-6 flex flex-col gap-3">
+            <Link
+              className={cn(
+                buttonVariants(),
+                "h-11 w-full bg-accent-brand px-5 font-medium text-accent-brand-foreground hover:bg-accent-brand/90",
+              )}
+              href={retryHref}
+            >
+              <RotateCcw className="size-4" />
+              {retryLabel}
+            </Link>
+            <a
+              className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-link underline decoration-link/30 underline-offset-4 hover:decoration-link"
+              href={coaching.drill.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              View source: {coaching.drill.sourceTitle}
+              <ArrowUpRight className="size-3.5" />
+            </a>
           </div>
-          <CardTitle className="mt-2 text-2xl font-semibold">
-            {coaching.drill.title}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ol className="grid gap-3 lg:grid-cols-3">
-            {coaching.drill.steps.map((step, index) => (
+        </aside>
+      </div>
+
+      {strengths.length > 0 ? (
+        <section
+          aria-labelledby="strengths-heading"
+          className="border-b border-success/30 py-7"
+        >
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-success">
+            <Check className="size-4" />
+            Why this score is strong
+          </div>
+          <h2
+            className="mt-3 text-3xl font-semibold uppercase tracking-[-0.035em]"
+            id="strengths-heading"
+          >
+            What you&apos;re doing well
+          </h2>
+          <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
+            These mechanics are helping the movement stay efficient and
+            repeatable.
+          </p>
+          <ul className="mt-6 grid border-y border-success/20 lg:grid-cols-3">
+            {strengths.map((strength, index) => (
               <li
-                className="flex gap-3 rounded-xl bg-muted p-4 text-sm leading-6"
-                key={step}
+                className={cn(
+                  "flex gap-3 py-5 lg:px-5",
+                  index > 0 && "border-t border-success/20 lg:border-l lg:border-t-0",
+                  index === 0 && "lg:pl-0",
+                )}
+                key={strength.id}
               >
-                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-secondary text-xs text-secondary-foreground">
-                  {index + 1}
+                <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-success/15 text-success">
+                  <Check className="size-3.5" />
                 </span>
-                {step}
+                <div>
+                  <h3 className="text-sm font-semibold">{strength.title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    {strength.detail}
+                  </p>
+                </div>
               </li>
             ))}
-          </ol>
-          <a
-            className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground"
-            href={coaching.drill.sourceUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Source: {coaching.drill.sourceTitle}
-            <ArrowUpRight className="size-4" />
-          </a>
-        </CardContent>
-      </Card>
+          </ul>
+        </section>
+      ) : null}
 
-      <div className="flex flex-col justify-between gap-3 sm:flex-row">
-        <Link
-          className={cn(buttonVariants({ variant: "outline" }), "h-11 px-5")}
-          href={retryHref}
-        >
-          {retryLabel}
-        </Link>
-        {showSaveAction && (saveAction ?? (
-          <Link
-            className={cn(buttonVariants(), "h-11 px-5 font-medium")}
-            href="/history"
-          >
-            <Check className="size-4" />
-            Save &amp; view progress
-            <ChevronRight className="size-4" />
-          </Link>
-        ))}
-      </div>
-    </div>
+      {showSaveAction && (
+        <div className="flex justify-end">
+          {saveAction ?? (
+            <Link
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "h-11 px-5 font-medium",
+              )}
+              href="/history"
+            >
+              <Check className="size-4" />
+              Save &amp; view progress
+              <ChevronRight className="size-4" />
+            </Link>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
+
 function Metric({
   label,
   value,
@@ -242,16 +233,18 @@ function Metric({
   accent?: boolean;
 }) {
   return (
-    <div className="rounded-xl border bg-muted p-4">
-      <span className="block text-xs text-muted-foreground">{label}</span>
-      <strong
+    <div className="py-4 first:pr-4 last:pl-4">
+      <dt className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        {label}
+      </dt>
+      <dd
         className={cn(
-          "mt-1 block text-2xl font-semibold tabular-nums",
-          accent && "text-primary",
+          "data mt-1 text-2xl font-semibold tracking-[-0.035em] text-foreground",
+          accent && "text-link",
         )}
       >
         {value}
-      </strong>
+      </dd>
     </div>
   );
 }

@@ -64,6 +64,8 @@ export async function resendVerificationCode(
   _previousState: AuthActionState,
   _formData: FormData,
 ): Promise<AuthActionState> {
+  void _previousState;
+  void _formData;
   return { message: "No verification needed — sign in with your password." };
 }
 
