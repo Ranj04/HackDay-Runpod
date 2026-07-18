@@ -170,7 +170,7 @@ function CostPanel({ cost }: { cost: RankCost }) {
     { icon: Cpu, label: "CPU-seconds", value: fmt(cost.cpu_seconds) },
     { icon: Server, label: "Workers", value: fmt(cost.workers) },
     { icon: Database, label: "Bright Data reqs", value: fmt(cost.brightdata_requests) },
-    { icon: Database, label: "Supabase rows", value: fmt(cost.supabase_rows) },
+    { icon: Database, label: "Database rows", value: fmt(cost.supabase_rows) },
   ];
   return (
     <Card className="border-border bg-card">

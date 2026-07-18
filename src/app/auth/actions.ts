@@ -36,7 +36,7 @@ export async function authenticate(
     return { error: parsed.error.issues[0]?.message ?? "Check your details." };
   }
   if (!isSupabaseConfigured()) {
-    return { error: "Supabase is not configured. Add the project URL and anon key." };
+    return { error: "Account storage is not configured in this environment." };
   }
 
   const supabase = await getServerSupabase();

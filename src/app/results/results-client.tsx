@@ -12,7 +12,15 @@ import { EchoOverlay } from "@/components/overlay";
 import { BaseballShowcase } from "@/components/overlay";
 import { ResultsView } from "@/components/results";
 import { baseballSampleAnalysis, baseballSampleCoaching } from "@/lib/baseball-sample";
-import { loadCapture, loadCapturedClip } from "@/lib/capture-store";
+import {
+  loadCapture,
+  loadCapturedClip,
+  loadCaptureSource,
+} from "@/lib/capture-store";
+import {
+  applyCaptureScorePolicy,
+  type CaptureSource,
+} from "@/lib/analysis/scorePolicy";
 import {
   AnalysisResultSchema,
   CoachingResultSchema,
@@ -254,11 +262,16 @@ function BasketballResultsClient() {
     const live = loadCapture("basketball");
     const capture = live ?? mockShotCapture;
     const clip = live ? loadCapturedClip("basketball") : null;
+    // Old stored captures have no source marker; default them to camera so a
+    // legacy live recording cannot accidentally receive an upload-style score.
+    const source: CaptureSource | undefined = live
+      ? loadCaptureSource("basketball") ?? "camera"
+      : undefined;
     let cancelled = false;
 
     // 1) Instant: analyze the browser keypoints we already captured — renders in
     //    ~1s instead of blocking on a cold GPU. The GPU pass then upgrades below.
-    analyzeAndCoach(capture)
+    analyzeAndCoach(capture, source)
       .then((result) => {
         if (cancelled) return;
         setState({
@@ -290,6 +303,7 @@ function BasketballResultsClient() {
         clipAsFile(clip, capture.id),
       );
       form.set("sport", "basketball");
+      form.set("source", source ?? "camera");
       fetch("/api/analyze", { method: "POST", body: form })
         .then(async (response) => {
           const payload = await response.json().catch(() => null);
@@ -304,7 +318,10 @@ function BasketballResultsClient() {
             prev.phase === "ready"
               ? {
                   ...prev,
-                  analysis: AnalysisResultSchema.parse(payload.analysis),
+                  analysis: applyCaptureScorePolicy(
+                    AnalysisResultSchema.parse(payload.analysis),
+                    source ?? "camera",
+                  ),
                   coaching: CoachingResultSchema.parse(payload.coaching),
                   compute: "flash-gpu",
                   gpuMs:
@@ -383,6 +400,7 @@ function BasketballResultsClient() {
         saveAction={
           <SaveSessionButton
             analysis={state.analysis}
+            autoSave={state.live && !state.upgrading}
             coaching={state.coaching}
             clip={state.clip}
             compute={{

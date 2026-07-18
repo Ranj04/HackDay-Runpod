@@ -9,11 +9,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ProgressView } from "@/components/results";
 import {
   isSupabaseConfigured,
+  loadLocalSessions,
   loadSessions,
   type EchoSession,
   type PersistenceMode,
 } from "@/lib/db";
 import { loadSessionsAction } from "@/lib/db/server";
+import { mergeProgressSessions } from "@/lib/progress/mock-sessions";
 import { cn } from "@/lib/utils";
 
 import { signOut } from "../auth/actions";
@@ -38,7 +40,16 @@ export function HistoryDashboard() {
 
     load
       .then((result) => {
-        if (active) setState(result);
+        if (!active) return;
+
+        const browserSessions = loadLocalSessions();
+        setState({
+          ...result,
+          sessions: mergeProgressSessions([
+            ...result.sessions,
+            ...browserSessions,
+          ]),
+        });
       })
       .catch((caught) => {
         if (active) {
@@ -72,17 +83,6 @@ export function HistoryDashboard() {
     );
   }
 
-  if (state.mode === "supabase" && !state.userEmail) {
-    return (
-      <EmptyState
-        body="Sign in to load your saved Supabase sessions and progress."
-        href="/auth?next=/history"
-        linkLabel="Sign in"
-        title="Your history is account-backed."
-      />
-    );
-  }
-
   if (state.sessions.length === 0) {
     return (
       <EmptyState
@@ -96,6 +96,20 @@ export function HistoryDashboard() {
 
   return (
     <>
+      {state.mode === "supabase" && !state.userEmail ? (
+        <div className="mb-5 flex flex-col justify-between gap-3 rounded-xl border border-border bg-muted px-4 py-3 text-sm sm:flex-row sm:items-center">
+          <span>
+            Your progress stays available in this browser. Sign in to sync
+            future uploads.
+          </span>
+          <Link
+            className={cn(buttonVariants({ variant: "outline" }), "h-9 px-3")}
+            href="/auth?next=/history"
+          >
+            Sign in
+          </Link>
+        </div>
+      ) : null}
       {state.userEmail && (
         <div className="mb-5 flex items-center justify-end gap-3 text-xs text-muted-foreground">
           <span>{state.userEmail}</span>
@@ -107,7 +121,11 @@ export function HistoryDashboard() {
           </form>
         </div>
       )}
-      <ProgressView sessions={state.sessions} mode={state.mode} />
+      <ProgressView
+        accountConnected={Boolean(state.userEmail)}
+        sessions={state.sessions}
+        mode={state.mode}
+      />
     </>
   );
 }

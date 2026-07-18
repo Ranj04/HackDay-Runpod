@@ -13,9 +13,11 @@ import type { EchoSession, PersistenceMode } from "@/lib/db";
 export function ProgressView({
   sessions,
   mode,
+  accountConnected = false,
 }: {
   sessions: EchoSession[];
   mode: PersistenceMode;
+  accountConnected?: boolean;
 }) {
   const recent = sessions.slice(0, 6);
   const flawCounts = recent.reduce<Record<string, { label: string; count: number }>>(
@@ -52,7 +54,13 @@ export function ProgressView({
           ) : (
             <HardDrive className="size-3.5 text-primary" />
           )}
-          {mode === "supabase" ? "Supabase synced" : "Local demo mode"}
+          {accountConnected
+            ? "Progress synced"
+            : mode === "supabase"
+              ? "Progress history"
+              : "Saved on this device"}
+          <span aria-hidden="true">·</span>
+          {sessions.length} sessions
         </Badge>
       </div>
 
@@ -152,24 +160,22 @@ function Stat({
 
 function ScoreChart({ sessions }: { sessions: EchoSession[] }) {
   const chronological = [...sessions].reverse();
-  const points = chronological
-    .map((session, index) => {
-      const x =
-        chronological.length === 1
-          ? 300
-          : 30 + (index / (chronological.length - 1)) * 540;
-      const y = 180 - (session.score / 100) * 150;
-      return `${x},${y}`;
-    })
-    .join(" ");
+  const chartWidth = Math.max(600, 60 + (chronological.length - 1) * 70);
+  const chartPoints = chronological.map((session, index) => ({
+    session,
+    x: chronological.length === 1 ? chartWidth / 2 : 30 + index * 70,
+    y: 180 - (session.score / 100) * 150,
+  }));
+  const points = chartPoints.map(({ x, y }) => `${x},${y}`).join(" ");
 
   return (
-    <div className="overflow-hidden rounded-xl bg-muted p-3 sm:p-5">
+    <div className="overflow-x-auto rounded-xl bg-muted p-3 sm:p-5">
       <svg
         aria-label="Score over time chart"
         className="h-auto w-full"
         role="img"
-        viewBox="0 0 600 200"
+        style={{ minWidth: `${chartWidth}px` }}
+        viewBox={`0 0 ${chartWidth} 200`}
       >
         {[30, 80, 130, 180].map((y) => (
           <line
@@ -177,7 +183,7 @@ function ScoreChart({ sessions }: { sessions: EchoSession[] }) {
             stroke="var(--border)"
             strokeWidth="1"
             x1="25"
-            x2="575"
+            x2={chartWidth - 25}
             y1={y}
             y2={y}
           />
@@ -190,8 +196,7 @@ function ScoreChart({ sessions }: { sessions: EchoSession[] }) {
           strokeLinejoin="round"
           strokeWidth="5"
         />
-        {chronological.map((session, index) => {
-          const [x, y] = points.split(" ")[index].split(",");
+        {chartPoints.map(({ session, x, y }) => {
           return (
             <g key={session.id}>
               <circle cx={x} cy={y} fill="var(--muted)" r="7" stroke="var(--chart-1)" strokeWidth="4" />

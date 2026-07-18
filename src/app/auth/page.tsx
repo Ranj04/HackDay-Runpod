@@ -34,7 +34,7 @@ export default async function AuthPage({
           </p>
           <p className="flex items-center gap-3">
             <Cloud className="size-5 text-primary" />
-            Supabase-backed player history
+            Secure cloud player history
           </p>
         </div>
       </section>
@@ -43,7 +43,7 @@ export default async function AuthPage({
         <CardContent className="p-5 sm:p-7">
           {!configured && (
             <div className="mb-5 rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm leading-6 text-warning">
-              Supabase credentials are not configured in this environment.
+              Account storage is not configured in this environment.
               Account actions are disabled; you can still use the{" "}
               <Link className="font-semibold underline" href="/results">
                 local demo flow

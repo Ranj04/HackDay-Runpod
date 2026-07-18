@@ -26,8 +26,8 @@ function PitcherFigure({ echo = false }: { echo?: boolean }) {
 
 export function BaseballShowcase({
   compact = false,
-  score = 68,
-  observed = 28,
+  score = 18,
+  observed = 5,
   reference = 42,
 }: {
   compact?: boolean;

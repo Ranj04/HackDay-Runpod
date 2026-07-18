@@ -6,6 +6,7 @@ import { Camera, LoaderCircle, Upload } from "lucide-react";
 
 import { CaptureView } from "@/components/capture/CaptureView";
 import { VideoUpload } from "@/components/capture/VideoUpload";
+import type { CaptureSource } from "@/lib/analysis/scorePolicy";
 import { clearCapture, saveCapture } from "@/lib/capture-store";
 import type { ShotCapture } from "@/lib/contracts";
 import type { SportId } from "@/lib/sports";
@@ -21,9 +22,13 @@ export function CaptureStage({ sport }: { sport: SportId }) {
   const resultsHref = sport === "baseball" ? "/results?sport=baseball" : "/results";
 
   // A real recorded shot: stash it and let /results analyze + render it.
-  function handleCapture(capture: ShotCapture, clip?: Blob) {
+  function handleCapture(
+    capture: ShotCapture,
+    clip: Blob | undefined,
+    source: CaptureSource,
+  ) {
     setNavigating(true);
-    saveCapture(capture, clip, sport);
+    saveCapture(capture, clip, sport, source);
     router.push(resultsHref);
   }
 
@@ -77,9 +82,15 @@ export function CaptureStage({ sport }: { sport: SportId }) {
       </div>
 
       {mode === "record" ? (
-        <CaptureView onCapture={handleCapture} sport={sport} />
+        <CaptureView
+          onCapture={(capture, clip) => handleCapture(capture, clip, "camera")}
+          sport={sport}
+        />
       ) : (
-        <VideoUpload onCapture={handleCapture} sport={sport} />
+        <VideoUpload
+          onCapture={(capture, clip) => handleCapture(capture, clip, "upload")}
+          sport={sport}
+        />
       )}
       <button
         className="mt-4 text-sm text-muted-foreground underline hover:text-foreground disabled:opacity-50"

@@ -5,7 +5,7 @@
 // mock contract with cited drills. Signed-in users can save a run to Supabase.
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, Cloud, HardDrive, LoaderCircle, TriangleAlert } from "lucide-react";
+import { Check, Cloud, HardDrive, LoaderCircle } from "lucide-react";
 
 import { RankedReport } from "@/components/results/ranked-report";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -112,32 +112,15 @@ export function ReportClient() {
     );
   }
 
-  const isSample = !state.persisted && !state.live;
-
   return (
     <div className="space-y-6">
-      {isSample ? (
-        <div className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/10 p-4">
-          <TriangleAlert className="mt-0.5 size-5 shrink-0 text-warning" />
-          <div>
-            <p className="text-sm font-semibold text-foreground">Sample data — not a live run</p>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Illustrative fan-out with placeholder numbers — not your shot or a real GPU batch.
-              Set <code className="font-mono text-xs">BATCH_CLIP_URLS</code> (comma-separated clips)
-              with <code className="font-mono text-xs">flash dev</code> for a real ranked run, or{" "}
-              <Link href="/capture" className="text-link underline">record your own shot</Link>.
-            </p>
-          </div>
-        </div>
-      ) : null}
-
       <div className="flex flex-wrap items-center justify-between gap-4">
         <p className="text-sm text-muted-foreground">
           {state.persisted
-            ? "Loaded from Supabase — your last saved run."
+            ? "Loaded from your saved history."
             : state.live
               ? "Live fan-out report from RunPod Flash (GPU pose + ranked scoring)."
-              : "Sample fan-out — placeholder data for the fan-out visual."}
+              : "Demo fan-out — example data for the fan-out visual."}
         </p>
         {!state.persisted ? (
           <Button
@@ -155,7 +138,7 @@ export function ReportClient() {
 
       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
         {mode === "supabase" ? <Cloud className="size-3" /> : <HardDrive className="size-3" />}
-        {mode === "supabase" ? "Persists to Supabase (RLS-scoped per user)" : "Local demo storage"}
+        {mode === "supabase" ? "Syncs securely to your account" : "Local demo storage"}
       </span>
       {saveError ? (
         <p aria-live="polite" className="text-xs text-destructive">

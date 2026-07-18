@@ -28,9 +28,7 @@ export async function saveSession(
   const createdAt = new Date().toISOString();
 
   if (!supabase) {
-    const session = toSession(analysis, coaching, DEMO_USER_ID, createdAt, artifacts);
-    writeLocalSessions([session, ...readLocalSessions()]);
-    return session;
+    return saveLocalSession(analysis, coaching, artifacts);
   }
 
   const { data: authData, error: authError } = await supabase.auth.getUser();
@@ -45,6 +43,23 @@ export async function saveSession(
     .single();
   if (error) throw error;
   return EchoSessionSchema.parse(data);
+}
+
+/** Demo-safe write path used when account persistence is unavailable. */
+export async function saveLocalSession(
+  analysis: AnalysisResult,
+  coaching: CoachingResult,
+  artifacts?: RunArtifacts,
+): Promise<EchoSession> {
+  const session = toSession(
+    analysis,
+    coaching,
+    DEMO_USER_ID,
+    new Date().toISOString(),
+    artifacts,
+  );
+  writeLocalSessions([session, ...readLocalSessions()]);
+  return session;
 }
 
 export async function loadSessions(): Promise<{
@@ -105,6 +120,11 @@ function readLocalSessions(): EchoSession[] {
   } catch {
     return [];
   }
+}
+
+/** Browser-only local rows that can be combined with account history. */
+export function loadLocalSessions(): EchoSession[] {
+  return readLocalSessions();
 }
 
 function writeLocalSessions(sessions: EchoSession[]) {

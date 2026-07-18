@@ -18,6 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { explainStrongScore } from "@/lib/analysis/strengths";
 import type { AnalysisResult, CoachingResult } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +54,7 @@ export function ResultsView({
   showSaveAction = true,
 }: ResultsViewProps) {
   const { topFlaw } = analysis;
+  const strengths = explainStrongScore(analysis);
 
   return (
     <div className="space-y-6">
@@ -134,6 +136,44 @@ export function ResultsView({
           </CardContent>
         </Card>
       </section>
+
+      {strengths.length > 0 ? (
+        <Card className="border-success/25 bg-success/5 ring-success/15">
+          <CardHeader>
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-success">
+              <Check className="size-4" />
+              Why this score is strong
+            </div>
+            <CardTitle className="mt-2 text-2xl font-semibold">
+              What you&apos;re doing well
+            </CardTitle>
+            <CardDescription className="max-w-2xl text-base leading-7">
+              These mechanics are helping the movement stay efficient and
+              repeatable.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="grid gap-3 lg:grid-cols-3">
+              {strengths.map((strength) => (
+                <li
+                  className="flex gap-3 rounded-xl border border-success/15 bg-background/40 p-4"
+                  key={strength.id}
+                >
+                  <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-success/15 text-success">
+                    <Check className="size-3.5" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold">{strength.title}</p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      {strength.detail}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="border-0 ring-white/10">
         <CardHeader>

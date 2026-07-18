@@ -1,7 +1,9 @@
 export {
   getPersistenceMode,
   isSupabaseConfigured,
+  loadLocalSessions,
   loadSessions,
+  saveLocalSession,
   saveSession,
 } from "./sessions";
 export {

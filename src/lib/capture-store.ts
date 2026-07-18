@@ -3,10 +3,12 @@
 // it. sessionStorage (per-tab, survives client navigation + reload) keeps the
 // demo robust — a reload re-runs the same real shot instead of blanking.
 import { ShotCaptureSchema, type ShotCapture } from "@/lib/contracts";
+import type { CaptureSource } from "@/lib/analysis/scorePolicy";
 import type { SportId } from "@/lib/sports";
 
 const KEY = "echo.capture.v1";
 const SPORT_KEY = "echo.capture.sport.v1";
+const SOURCE_KEY = "echo.capture.source.v1";
 let capturedClip: Blob | null = null;
 let capturedSport: SportId | null = null;
 
@@ -14,6 +16,7 @@ export function saveCapture(
   capture: ShotCapture,
   clip?: Blob,
   sport: SportId = "basketball",
+  source: CaptureSource = "camera",
 ): void {
   if (typeof window === "undefined") return;
   capturedClip = clip ?? null;
@@ -21,6 +24,7 @@ export function saveCapture(
   try {
     window.sessionStorage.setItem(KEY, JSON.stringify(capture));
     window.sessionStorage.setItem(SPORT_KEY, sport);
+    window.sessionStorage.setItem(SOURCE_KEY, source);
   } catch {
     // Quota or private-mode failure: /results falls back to the sample shot.
   }
@@ -47,6 +51,19 @@ export function loadCapturedClip(expectedSport?: SportId): Blob | null {
   return capturedClip;
 }
 
+/** Read the source of the stored capture so camera and upload scoring stay distinct. */
+export function loadCaptureSource(expectedSport?: SportId): CaptureSource | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const storedSport = window.sessionStorage.getItem(SPORT_KEY) ?? "basketball";
+    if (expectedSport && storedSport !== expectedSport) return null;
+    const source = window.sessionStorage.getItem(SOURCE_KEY);
+    return source === "camera" || source === "upload" ? source : null;
+  } catch {
+    return null;
+  }
+}
+
 export function clearCapture(): void {
   if (typeof window === "undefined") return;
   capturedClip = null;
@@ -54,6 +71,7 @@ export function clearCapture(): void {
   try {
     window.sessionStorage.removeItem(KEY);
     window.sessionStorage.removeItem(SPORT_KEY);
+    window.sessionStorage.removeItem(SOURCE_KEY);
   } catch {
     // Best effort.
   }

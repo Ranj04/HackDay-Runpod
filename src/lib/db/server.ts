@@ -106,11 +106,11 @@ export async function saveCompleteSessionAction(
   const supabase = await getServerSupabase();
   const { data: authData, error: authError } =
     await supabase.auth.getUser();
-  if (authError) {
-    throw new Error(authError.message);
-  }
   if (!authData.user) {
     throw new Error("AUTH_REQUIRED");
+  }
+  if (authError) {
+    throw new Error(authError.message);
   }
 
   let artifacts: RunArtifacts | undefined;
@@ -195,11 +195,11 @@ export async function saveSessionAction(
 
   const { data: authData, error: authError } =
     await supabase.auth.getUser();
-  if (authError) {
-    throw new Error(authError.message);
-  }
   if (!authData.user) {
     throw new Error("AUTH_REQUIRED");
+  }
+  if (authError) {
+    throw new Error(authError.message);
   }
   // Per-user rate limit on the write path (30 saves / minute).
   if (!(await checkRateLimit(`save:${authData.user.id}`, 30, 60))) {

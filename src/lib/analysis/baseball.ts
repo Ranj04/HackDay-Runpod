@@ -8,6 +8,7 @@ import type {
 } from "@/lib/contracts";
 
 const REFERENCE_SEPARATION = 42;
+const BEGINNER_SCORE_CAP = 18;
 const SOURCE_URL = "https://www.mlb.com/pitch-smart";
 const SOURCE_TITLE = "MLB Pitch Smart — Safe Pitching Guidance";
 
@@ -104,7 +105,12 @@ export function analyzeBaseballPitch(capture: ShotCapture): AnalysisResult {
     },
     topFlaw: flaw,
     allFlaws: [flaw],
-    score: Math.max(0, Math.min(100, Math.round(100 - gap * 2.2))),
+    // Baseball is currently a beginner demonstration. Keep its presentation
+    // score below 20 without changing basketball's independently calibrated score.
+    score: Math.min(
+      BEGINNER_SCORE_CAP,
+      Math.max(0, Math.min(100, Math.round(100 - gap * 2.2))),
+    ),
     echoRef: [],
   };
 }

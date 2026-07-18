@@ -1,12 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, ChevronRight, Cloud, HardDrive, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import type { AnalysisResult, CoachingResult } from "@/lib/contracts";
-import { getPersistenceMode, isSupabaseConfigured, saveSession } from "@/lib/db";
+import {
+  getPersistenceMode,
+  isSupabaseConfigured,
+  saveLocalSession,
+  saveSession,
+} from "@/lib/db";
 import { saveCompleteSessionAction } from "@/lib/db/server";
 
 export function SaveSessionButton({
@@ -14,6 +19,7 @@ export function SaveSessionButton({
   coaching,
   clip,
   compute,
+  autoSave = false,
 }: {
   analysis: AnalysisResult;
   coaching: CoachingResult;
@@ -23,13 +29,26 @@ export function SaveSessionButton({
     gpuMs?: number;
     modelLoadMs?: number;
   };
+  autoSave?: boolean;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [savedLocally, setSavedLocally] = useState(false);
   const [error, setError] = useState<string>();
+  const autoSaveStarted = useRef(false);
   const mode = getPersistenceMode();
+  const savedMarker = `echo.progress.saved.${mode}.${analysis.capture.id}`;
 
-  async function handleSave() {
+  const persist = useCallback(async (redirectToProgress: boolean) => {
+    const previousSave = window.sessionStorage.getItem(savedMarker);
+    if (previousSave === "saved" || previousSave === "local") {
+      setSaved(true);
+      setSavedLocally(previousSave === "local");
+      if (redirectToProgress) router.push("/history");
+      return;
+    }
+
     setPending(true);
     setError(undefined);
 
@@ -51,15 +70,58 @@ export function SaveSessionButton({
       } else {
         await saveSession(analysis, coaching);
       }
-      router.push("/history");
+      window.sessionStorage.setItem(savedMarker, "saved");
+      setSaved(true);
+      setPending(false);
+      if (redirectToProgress) router.push("/history");
     } catch (caught) {
-      if (caught instanceof Error && caught.message === "AUTH_REQUIRED") {
-        router.push("/auth?next=/results");
+      const message = caught instanceof Error ? caught.message : "";
+      const authMissing =
+        message === "AUTH_REQUIRED" ||
+        message.toLowerCase().includes("auth session missing");
+
+      if (authMissing) {
+        try {
+          await saveLocalSession(analysis, coaching);
+          window.sessionStorage.setItem(savedMarker, "local");
+          setSavedLocally(true);
+          setSaved(true);
+          setPending(false);
+          if (redirectToProgress) router.push("/history");
+        } catch (localError) {
+          setError(
+            localError instanceof Error
+              ? localError.message
+              : "Could not save this upload locally.",
+          );
+          setPending(false);
+        }
         return;
       }
       setError(caught instanceof Error ? caught.message : "Could not save.");
       setPending(false);
     }
+  }, [
+    analysis,
+    clip,
+    coaching,
+    compute,
+    router,
+    savedMarker,
+  ]);
+
+  useEffect(() => {
+    if (!autoSave || autoSaveStarted.current) return;
+    autoSaveStarted.current = true;
+    void persist(false);
+  }, [autoSave, persist]);
+
+  function handleSave() {
+    if (saved) {
+      router.push("/history");
+      return;
+    }
+    void persist(true);
   }
 
   return (
@@ -74,7 +136,11 @@ export function SaveSessionButton({
         ) : (
           <Check className="size-4" />
         )}
-        Save &amp; view progress
+        {pending
+          ? "Adding to progress…"
+          : saved
+            ? "Saved — view progress"
+            : "Save & view progress"}
         <ChevronRight className="size-4" />
       </Button>
       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -83,9 +149,13 @@ export function SaveSessionButton({
         ) : (
           <HardDrive className="size-3" />
         )}
-        {mode === "supabase"
-          ? "Saved securely with Supabase"
-          : "Local demo storage"}
+        {saved
+          ? savedLocally
+            ? "Added locally — sign in to sync future uploads"
+            : "Automatically added to your progress"
+          : mode === "supabase"
+            ? "Uploads save securely to your account"
+            : "Uploads save to local demo storage"}
       </span>
       {error && (
         <span aria-live="polite" className="max-w-sm text-xs text-destructive">

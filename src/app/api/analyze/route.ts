@@ -1,5 +1,9 @@
 import { analyzeShot, coachFlaw } from "@/lib/core";
 import {
+  applyCaptureScorePolicy,
+  type CaptureSource,
+} from "@/lib/analysis/scorePolicy";
+import {
   analyzeBaseballPitch,
   coachBaseballPitch,
 } from "@/lib/analysis/baseball";
@@ -46,6 +50,10 @@ async function handle(request: Request): Promise<Response> {
     );
     const clip = form.get("clip");
     const sport = parseSport(String(form.get("sport") ?? ""));
+    // Treat an omitted/unknown source conservatively. The current browser always
+    // sends this field, while older camera captures should never bypass the cap.
+    const source: CaptureSource =
+      form.get("source") === "upload" ? "upload" : "camera";
 
     if (clip instanceof Blob && clip.size > 0) {
       if (clip.size > MAX_CLIP_BYTES) {
@@ -88,10 +96,14 @@ async function handle(request: Request): Promise<Response> {
       warning = "No recorded clip was available for GPU pose";
     }
 
-    const analysis =
+    const rawAnalysis =
       sport === "baseball"
         ? analyzeBaseballPitch(capture)
         : await analyzeShot(capture);
+    const analysis =
+      sport === "basketball"
+        ? applyCaptureScorePolicy(rawAnalysis, source)
+        : rawAnalysis;
     const coaching =
       sport === "baseball"
         ? coachBaseballPitch(analysis.topFlaw)
@@ -102,6 +114,7 @@ async function handle(request: Request): Promise<Response> {
       compute,
       gpuMs,
       modelLoadMs,
+      source,
       topFlaw: analysis.topFlaw?.id,
       sport,
       degraded: Boolean(warning),

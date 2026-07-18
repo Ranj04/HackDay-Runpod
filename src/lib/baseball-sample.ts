@@ -14,14 +14,14 @@ export const baseballSampleAnalysis: AnalysisResult = {
   topFlaw: {
     id: "early_front_side",
     label: "Front side opening early",
-    severity: "med",
+    severity: "high",
     metric: "hipShoulderSeparation",
-    observed: 28,
+    observed: 5,
     reference: 42,
     direction: "too_low",
   },
   allFlaws: [],
-  score: 68,
+  score: 18,
   echoRef: [],
 };
 
